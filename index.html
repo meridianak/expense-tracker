@@ -101,45 +101,59 @@
     .recent-meta   { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .recent-amount { font-size: 14px; font-weight: 800; color: var(--brand); flex-shrink: 0; }
 
+    /* ── Nav badge ── */
+    .nav-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--red); color: #fff; font-size: 10px; font-weight: 800;
+      border-radius: 10px; padding: 1px 6px; margin-left: 5px;
+      min-width: 18px; line-height: 16px;
+    }
+
     /* ── Pending banner ── */
     .pending-banner {
       display: flex; align-items: center; justify-content: space-between;
-      background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius);
-      padding: 11px 18px; margin-bottom: 14px; gap: 12px;
+      border-radius: var(--radius); padding: 13px 18px; margin-bottom: 14px; gap: 12px;
+      background: #fef2f2; border: 1px solid #fecaca;
     }
     .pending-banner.none { background: #f0fdf4; border-color: #bbf7d0; }
-    .pending-banner-left { display: flex; align-items: center; gap: 10px; }
+    .pending-banner-left { display: flex; align-items: center; gap: 12px; }
     .pending-count {
-      background: var(--amber); color: #fff; font-size: 13px; font-weight: 800;
-      border-radius: 20px; padding: 2px 10px; min-width: 26px; text-align: center;
+      background: var(--red); color: #fff; font-size: 14px; font-weight: 800;
+      border-radius: 50%; width: 32px; height: 32px; display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .pending-count.zero { background: var(--green); }
-    .pending-banner-msg { font-size: 13px; font-weight: 600; color: var(--text); }
-    .pending-banner-amt { font-size: 13px; font-weight: 700; color: var(--amber); }
+    .pending-count.zero { background: var(--green); font-size: 16px; }
+    .pending-banner-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--red); }
+    .pending-banner.none .pending-banner-label { color: var(--green); }
+    .pending-banner-msg { font-size: 15px; font-weight: 700; color: var(--text); }
+    .pending-banner-amt { font-size: 15px; font-weight: 800; color: var(--red); }
     .pending-banner.none .pending-banner-amt { color: var(--green); }
     .pending-banner-link {
-      font-size: 12px; font-weight: 700; color: var(--brand-light);
-      background: none; border: none; cursor: pointer; white-space: nowrap;
-      text-decoration: underline; text-underline-offset: 2px;
+      font-size: 12px; font-weight: 700; color: var(--red);
+      background: none; border: 1px solid #fecaca; border-radius: 6px;
+      cursor: pointer; white-space: nowrap; padding: 5px 12px;
+      transition: all .15s;
     }
-    .pending-banner-link:hover { color: var(--brand); }
+    .pending-banner-link:hover { background: var(--red); color: #fff; border-color: var(--red); }
 
     /* ── Filter bar ── */
     .filter-bar {
       background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
-      padding: 12px 16px; margin-bottom: 12px;
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 14px 18px; margin-bottom: 12px;
     }
+    .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .filter-row:last-child { margin-bottom: 0; }
     .filter-bar input, .filter-bar select {
       padding: 7px 11px; border: 1px solid var(--border); border-radius: 7px;
-      font-size: 13px; color: var(--text); background: var(--surface); outline: none;
-      height: 34px;
+      font-size: 13px; color: var(--text); background: var(--surface); outline: none; height: 34px;
     }
     .filter-bar input:focus, .filter-bar select:focus { border-color: var(--brand-light); }
-    .filter-bar input[type="text"] { min-width: 200px; flex: 1; }
-    .filter-bar input[type="date"] { width: 146px; }
-    .filter-sep { color: var(--border); font-size: 18px; user-select: none; }
-    .active-filters { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; margin-top: 4px; }
+    .filter-bar input[type="text"]  { min-width: 220px; flex: 1; }
+    .filter-bar input[type="date"]  { width: 148px; }
+    .filter-bar input[type="month"] { width: 148px; }
+    .filter-sep { color: var(--border); font-size: 20px; user-select: none; margin: 0 2px; }
+    .filter-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); white-space: nowrap; }
+    .active-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
     .filter-chip {
       display: inline-flex; align-items: center; gap: 5px;
       background: var(--brand); color: #fff;
@@ -189,26 +203,31 @@
     .pill-notbillable { background: #f1f5f9; color: #475569; }
     .pill-unsure      { background: var(--amber-bg); color: #92400e; }
 
-    /* Checkbox toggle */
-    .cb-wrap { display: flex; align-items: center; justify-content: center; }
-    .cb-wrap input[type="checkbox"] {
-      width: 17px; height: 17px; cursor: pointer; accent-color: var(--brand);
-      border-radius: 4px;
+    /* Status toggle buttons (Billed / Processed) */
+    .status-toggle {
+      display: inline-flex; align-items: center; gap: 5px;
+      border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: all .15s; white-space: nowrap; border: 1.5px solid;
+      user-select: none;
     }
+    .status-toggle.billed-off    { background: var(--bg);       color: var(--muted);  border-color: var(--border); }
+    .status-toggle.billed-off:hover { background: var(--green-bg); color: #16a34a; border-color: #86efac; }
+    .status-toggle.billed-on     { background: var(--green-bg); color: #16a34a; border-color: #86efac; }
+    .status-toggle.billed-on:hover  { background: #bbf7d0; }
+    .status-toggle.processed-off { background: var(--bg);       color: var(--muted);  border-color: var(--border); }
+    .status-toggle.processed-off:hover { background: var(--blue-bg); color: var(--blue); border-color: #93c5fd; }
+    .status-toggle.processed-on  { background: var(--blue-bg);  color: var(--blue);   border-color: #93c5fd; }
+    .status-toggle.processed-on:hover  { background: #bfdbfe; }
 
     /* Row action buttons */
     .btn-edit-row {
       display: inline-flex; align-items: center; gap: 5px;
-      border-radius: 7px; padding: 5px 12px; font-size: 12px; font-weight: 600;
+      border-radius: 7px; padding: 5px 14px; font-size: 12px; font-weight: 600;
       cursor: pointer; transition: all .15s; white-space: nowrap;
     }
-    .btn-edit-row.edit {
-      background: var(--brand); color: #fff; border: none;
-    }
+    .btn-edit-row.edit  { background: var(--brand); color: #fff; border: none; }
     .btn-edit-row.edit:hover { background: var(--brand-light); }
-    .btn-edit-row.delete {
-      background: none; color: var(--muted); border: none; padding: 5px 8px;
-    }
+    .btn-edit-row.delete { background: none; color: #cbd5e1; border: none; padding: 5px 8px; }
     .btn-edit-row.delete:hover { color: var(--red); }
 
     /* ── Dashboard ── */
@@ -348,7 +367,7 @@
 <!-- NAV -->
 <nav>
   <button class="active" onclick="showTab('portal')"    id="nav-portal">💳 Log Expense</button>
-  <button onclick="showTab('log')"       id="nav-log">📋 Expense Log</button>
+  <button onclick="showTab('log')" id="nav-log">📋 Expense Log<span class="nav-badge" id="nav-badge" style="display:none">0</span></button>
   <button onclick="showTab('dashboard')" id="nav-dashboard">📊 Dashboard</button>
 </nav>
 
@@ -376,46 +395,57 @@
     <!-- Pending banner -->
     <div class="pending-banner" id="pending-banner">
       <div class="pending-banner-left">
-        <span class="pending-count" id="pending-count">0</span>
-        <span class="pending-banner-msg" id="pending-msg">expenses pending processing</span>
-        <span class="pending-banner-amt" id="pending-amt"></span>
+        <div class="pending-count" id="pending-count">0</div>
+        <div>
+          <div class="pending-banner-label" id="pending-label">Unprocessed</div>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px">
+            <span class="pending-banner-msg" id="pending-msg">expenses pending processing</span>
+            <span class="pending-banner-amt" id="pending-amt"></span>
+          </div>
+        </div>
       </div>
       <button class="pending-banner-link" id="pending-link" onclick="filterUnprocessed()">Show unprocessed only →</button>
     </div>
 
-    <!-- Filter bar (single row) -->
+    <!-- Filter bar -->
     <div class="filter-bar">
-      <input type="text" id="log-search" placeholder="🔍  Search name, description, project…" oninput="renderLog()">
-      <span class="filter-sep">|</span>
-      <input type="date" id="filter-date-from" onchange="renderLog()" title="From date">
-      <span style="font-size:12px;color:var(--muted)">–</span>
-      <input type="date" id="filter-date-to" onchange="renderLog()" title="To date">
-      <span class="filter-sep">|</span>
-      <select id="filter-person" onchange="renderLog()" style="min-width:150px;">
-        <option value="">All Employees</option>
-      </select>
-      <select id="filter-type" onchange="renderLog()">
-        <option value="">All Types</option>
-        <option value="Mileage">🚗 Mileage</option>
-        <option value="Per Diem">🍽 Per Diem</option>
-        <option value="Out of Pocket">💸 Out of Pocket</option>
-      </select>
-      <select id="filter-billable" onchange="renderLog()">
-        <option value="">All Billing</option>
-        <option value="Billable">Billable</option>
-        <option value="Not Billable">Not Billable</option>
-        <option value="Unsure">Unsure</option>
-      </select>
-      <select id="filter-status" onchange="renderLog()">
-        <option value="">All Statuses</option>
-        <option value="unprocessed">Unprocessed</option>
-        <option value="processed">Processed</option>
-        <option value="billed">Billed</option>
-      </select>
-      <select id="filter-project" onchange="renderLog()" style="min-width:140px;">
-        <option value="">All Projects</option>
-      </select>
-      <button onclick="clearFilters()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;height:34px;">✕ Clear</button>
+      <div class="filter-row">
+        <input type="text" id="log-search" placeholder="🔍  Search name, description, project code…" oninput="renderLog()">
+        <span class="filter-sep">|</span>
+        <span class="filter-group-label">Month</span>
+        <input type="month" id="filter-month" onchange="onMonthFilter()" title="Filter by month">
+        <span class="filter-group-label" style="margin-left:4px">or Range</span>
+        <input type="date" id="filter-date-from" onchange="onDateRangeFilter()" title="From date">
+        <span style="font-size:12px;color:var(--muted)">–</span>
+        <input type="date" id="filter-date-to" onchange="onDateRangeFilter()" title="To date">
+      </div>
+      <div class="filter-row">
+        <select id="filter-person" onchange="renderLog()" style="min-width:160px;">
+          <option value="">All Employees</option>
+        </select>
+        <select id="filter-type" onchange="renderLog()">
+          <option value="">All Types</option>
+          <option value="Mileage">🚗 Mileage</option>
+          <option value="Per Diem">🍽 Per Diem</option>
+          <option value="Out of Pocket">💸 Out of Pocket</option>
+        </select>
+        <select id="filter-billable" onchange="renderLog()">
+          <option value="">All Billing</option>
+          <option value="Billable">Billable</option>
+          <option value="Not Billable">Not Billable</option>
+          <option value="Unsure">Unsure</option>
+        </select>
+        <select id="filter-status" onchange="renderLog()">
+          <option value="">All Statuses</option>
+          <option value="unprocessed">Unprocessed</option>
+          <option value="processed">Processed</option>
+          <option value="billed">Billed</option>
+        </select>
+        <select id="filter-project" onchange="renderLog()" style="min-width:150px;">
+          <option value="">All Projects</option>
+        </select>
+        <button onclick="clearFilters()" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;height:34px;">✕ Clear All</button>
+      </div>
       <div class="active-filters" id="active-filters"></div>
     </div>
 
@@ -439,8 +469,8 @@
             <th onclick="sortBy('billable')" id="th-billable">Billing</th>
             <th onclick="sortBy('project')" id="th-project">Project Code</th>
             <th onclick="sortBy('amount')"  id="th-amount" style="text-align:right">Amount</th>
-            <th class="no-sort" style="text-align:center">Billed</th>
-            <th class="no-sort" style="text-align:center">Processed</th>
+            <th class="no-sort">Billed</th>
+            <th class="no-sort">Processed</th>
             <th class="no-sort"></th>
           </tr>
         </thead>
@@ -848,15 +878,17 @@ function renderLog() {
       <td><span class="billable-label ${billLabelClass}">${billLabelText}</span></td>
       <td style="font-size:12px;color:var(--muted);font-weight:600">${e.projectCode ? escHtml(e.projectCode) : '—'}</td>
       <td style="text-align:right;font-weight:800;font-size:14px;color:${e.amount>0?'var(--green)':'var(--text)'}">${fmtCurrency(e.amount)}</td>
-      <td class="cb-wrap">
-        <input type="checkbox" ${e.isBilled ? 'checked' : ''}
-          onchange="toggleFlag('${e.itemId}','IsBilled',this.checked)"
-          title="${e.isBilled ? 'Mark as not billed' : 'Mark as billed'}">
+      <td>
+        <button class="status-toggle ${e.isBilled ? 'billed-on' : 'billed-off'}"
+          onclick="toggleFlag('${e.itemId}','IsBilled',${!e.isBilled})">
+          ${e.isBilled ? '✓' : '○'} Billed
+        </button>
       </td>
-      <td class="cb-wrap">
-        <input type="checkbox" ${e.isProcessed ? 'checked' : ''}
-          onchange="toggleFlag('${e.itemId}','IsProcessed',this.checked)"
-          title="${e.isProcessed ? 'Mark as unprocessed' : 'Mark as processed'}">
+      <td>
+        <button class="status-toggle ${e.isProcessed ? 'processed-on' : 'processed-off'}"
+          onclick="toggleFlag('${e.itemId}','IsProcessed',${!e.isProcessed})">
+          ${e.isProcessed ? '✓' : '○'} Processed
+        </button>
       </td>
       <td>
         <div style="display:flex;gap:4px;align-items:center">
@@ -878,31 +910,56 @@ function renderUnprocessedBanner() {
   const unprocessed = expenses.filter(e => !e.isProcessed);
   const count = unprocessed.length;
   const total = unprocessed.reduce((s, e) => s + e.amount, 0);
-  const banner = document.getElementById('pending-banner');
-  const countEl = document.getElementById('pending-count');
-  const msgEl   = document.getElementById('pending-msg');
-  const amtEl   = document.getElementById('pending-amt');
-  const linkEl  = document.getElementById('pending-link');
+  const banner   = document.getElementById('pending-banner');
+  const countEl  = document.getElementById('pending-count');
+  const labelEl  = document.getElementById('pending-label');
+  const msgEl    = document.getElementById('pending-msg');
+  const amtEl    = document.getElementById('pending-amt');
+  const linkEl   = document.getElementById('pending-link');
+  const badgeEl  = document.getElementById('nav-badge');
   if (!banner) return;
+
   if (count === 0) {
-    banner.className = 'pending-banner none';
-    countEl.className = 'pending-count zero';
-    countEl.textContent = '✓';
-    msgEl.textContent = 'All expenses have been processed';
-    amtEl.textContent = '';
-    linkEl.style.display = 'none';
+    banner.className           = 'pending-banner none';
+    countEl.className          = 'pending-count zero';
+    countEl.textContent        = '✓';
+    if (labelEl) labelEl.textContent = 'All Clear';
+    msgEl.textContent          = 'All expenses have been processed';
+    amtEl.textContent          = '';
+    if (linkEl) linkEl.style.display = 'none';
+    if (badgeEl) badgeEl.style.display = 'none';
   } else {
-    banner.className = 'pending-banner';
-    countEl.className = 'pending-count';
-    countEl.textContent = count;
-    msgEl.textContent = `expense${count !== 1 ? 's' : ''} pending processing`;
-    amtEl.textContent = `— ${fmtCurrency(total)} outstanding`;
-    linkEl.style.display = 'inline';
+    banner.className           = 'pending-banner';
+    countEl.className          = 'pending-count';
+    countEl.textContent        = count;
+    if (labelEl) labelEl.textContent = 'Unprocessed';
+    msgEl.textContent          = `expense${count !== 1 ? 's' : ''} pending processing`;
+    amtEl.textContent          = `— ${fmtCurrency(total)} outstanding`;
+    if (linkEl) linkEl.style.display = 'inline';
+    if (badgeEl) { badgeEl.textContent = count; badgeEl.style.display = 'inline-flex'; }
   }
 }
 
 function filterUnprocessed() {
   document.getElementById('filter-status').value = 'unprocessed';
+  renderLog();
+}
+
+// Month picker: sets from/to date range to cover the full month
+function onMonthFilter() {
+  const val = document.getElementById('filter-month').value; // "YYYY-MM"
+  if (!val) { renderLog(); return; }
+  const [y, m] = val.split('-').map(Number);
+  const firstDay = `${y}-${String(m).padStart(2,'0')}-01`;
+  const lastDay  = new Date(y, m, 0).toISOString().split('T')[0];
+  document.getElementById('filter-date-from').value = firstDay;
+  document.getElementById('filter-date-to').value   = lastDay;
+  renderLog();
+}
+
+// When date range is edited manually, clear the month picker
+function onDateRangeFilter() {
+  document.getElementById('filter-month').value = '';
   renderLog();
 }
 
@@ -916,17 +973,24 @@ function renderActiveFilterChips() {
   const billF    = document.getElementById('filter-billable').value;
   const statusF  = document.getElementById('filter-status').value;
   const projectF = document.getElementById('filter-project').value;
-  const dateFrom = document.getElementById('filter-date-from').value;
-  const dateTo   = document.getElementById('filter-date-to').value;
+  const dateFrom  = document.getElementById('filter-date-from').value;
+  const dateTo    = document.getElementById('filter-date-to').value;
+  const monthVal  = document.getElementById('filter-month').value;
 
-  if (search)   chips.push({ label: `Search: "${search}"`,          clear: () => { document.getElementById('log-search').value = ''; renderLog(); } });
-  if (person)   chips.push({ label: `Person: ${person}`,            clear: () => { document.getElementById('filter-person').value = ''; renderLog(); } });
-  if (typeF)    chips.push({ label: `Type: ${typeF}`,               clear: () => { document.getElementById('filter-type').value = ''; renderLog(); } });
-  if (billF)    chips.push({ label: `Billing: ${billF}`,            clear: () => { document.getElementById('filter-billable').value = ''; renderLog(); } });
-  if (statusF)  chips.push({ label: `Status: ${statusF}`,           clear: () => { document.getElementById('filter-status').value = ''; renderLog(); } });
-  if (projectF) chips.push({ label: `Project: ${projectF}`,         clear: () => { document.getElementById('filter-project').value = ''; renderLog(); } });
-  if (dateFrom) chips.push({ label: `From: ${fmtDate(dateFrom)}`,   clear: () => { document.getElementById('filter-date-from').value = ''; renderLog(); } });
-  if (dateTo)   chips.push({ label: `To: ${fmtDate(dateTo)}`,       clear: () => { document.getElementById('filter-date-to').value = ''; renderLog(); } });
+  if (search)    chips.push({ label: `Search: "${search}"`,         clear: () => { document.getElementById('log-search').value = ''; renderLog(); } });
+  if (person)    chips.push({ label: `Person: ${person}`,           clear: () => { document.getElementById('filter-person').value = ''; renderLog(); } });
+  if (typeF)     chips.push({ label: `Type: ${typeF}`,              clear: () => { document.getElementById('filter-type').value = ''; renderLog(); } });
+  if (billF)     chips.push({ label: `Billing: ${billF}`,           clear: () => { document.getElementById('filter-billable').value = ''; renderLog(); } });
+  if (statusF)   chips.push({ label: `Status: ${statusF}`,          clear: () => { document.getElementById('filter-status').value = ''; renderLog(); } });
+  if (projectF)  chips.push({ label: `Project: ${projectF}`,        clear: () => { document.getElementById('filter-project').value = ''; renderLog(); } });
+  if (monthVal) {
+    const [y,m] = monthVal.split('-');
+    const label = new Date(+y, +m-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    chips.push({ label: `Month: ${label}`, clear: () => { document.getElementById('filter-month').value=''; document.getElementById('filter-date-from').value=''; document.getElementById('filter-date-to').value=''; renderLog(); } });
+  } else {
+    if (dateFrom) chips.push({ label: `From: ${fmtDate(dateFrom)}`, clear: () => { document.getElementById('filter-date-from').value = ''; renderLog(); } });
+    if (dateTo)   chips.push({ label: `To: ${fmtDate(dateTo)}`,     clear: () => { document.getElementById('filter-date-to').value = ''; renderLog(); } });
+  }
 
   const el = document.getElementById('active-filters');
   if (chips.length === 0) { el.innerHTML = ''; return; }
@@ -949,6 +1013,7 @@ function clearFilters() {
   document.getElementById('filter-project').value   = '';
   document.getElementById('filter-date-from').value = '';
   document.getElementById('filter-date-to').value   = '';
+  document.getElementById('filter-month').value     = '';
   renderLog();
 }
 
