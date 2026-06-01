@@ -690,51 +690,22 @@ async function startApp() {
     startClock();
   } catch (e) {
     console.error('App start error:', e);
-    showLoading('⚠ Error loading data. Check setup guide.\n' + e.message);
+    document.getElementById('loading-msg').innerHTML =
+      `<span style="color:#fca5a5;font-size:14px;max-width:340px;display:block;line-height:1.6">⚠ ${e.message}</span>`;
   }
 }
 
-// ── Ensure ExpenseLog list exists ─────────────────────────
+// ── Verify ExpenseLog list exists ─────────────────────────
 async function ensureExpenseList() {
   try {
     await graph(`/sites/${siteId}/lists/${encodeURIComponent(CONFIG.expenseListName)}`);
   } catch (e) {
-    // List doesn't exist — create it
-    showLoading('Creating ExpenseLog list in SharePoint…');
-    await graph(`/sites/${siteId}/lists`, {
-      method: 'POST',
-      body: JSON.stringify({
-        displayName: CONFIG.expenseListName,
-        list: { template: 'genericList' }
-      })
-    });
-    // Add custom columns
-    const cols = [
-      { name: 'EmployeeName',  type: 'text'   },
-      { name: 'EmployeeEmail', type: 'text'   },
-      { name: 'ExpenseDate',   type: 'text'   },
-      { name: 'ExpenseType',   type: 'text'   },
-      { name: 'Description',   type: 'text'   },
-      { name: 'Miles',         type: 'number' },
-      { name: 'Rate',          type: 'number' },
-      { name: 'Amount',        type: 'number' },
-      { name: 'Billable',      type: 'text'   },
-      { name: 'ProjectCode',   type: 'text'   },
-      { name: 'Notes',         type: 'text'   },
-      { name: 'IsBilled',      type: 'boolean'},
-      { name: 'IsProcessed',   type: 'boolean'},
-      { name: 'SubmittedAt',   type: 'number' }
-    ];
-    for (const col of cols) {
-      try {
-        await graph(`/sites/${siteId}/lists/${encodeURIComponent(CONFIG.expenseListName)}/columns`, {
-          method: 'POST',
-          body: JSON.stringify({ name: col.name, [col.type]: {} })
-        });
-      } catch (colErr) {
-        console.warn(`Could not create column ${col.name}:`, colErr.message);
-      }
-    }
+    // List doesn't exist or can't be accessed — show a helpful message
+    throw new Error(
+      `The "ExpenseLog" SharePoint list was not found. ` +
+      `Please create it manually in SharePoint, then reload. ` +
+      `See the Setup Guide for column names and types.`
+    );
   }
 }
 
@@ -742,7 +713,7 @@ async function ensureExpenseList() {
 async function refreshData() {
   try {
     const res = await graph(
-      `/sites/${siteId}/lists/${encodeURIComponent(CONFIG.expenseListName)}/items?$expand=fields&$top=2000&$orderby=fields/SubmittedAt desc`
+      `/sites/${siteId}/lists/${encodeURIComponent(CONFIG.expenseListName)}/items?$expand=fields&$top=2000`
     );
     expenses = (res.value || []).map(item => {
       const f = item.fields;
