@@ -101,19 +101,45 @@
     .recent-meta   { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .recent-amount { font-size: 14px; font-weight: 800; color: var(--brand); flex-shrink: 0; }
 
-    /* ── Expense Log filters ── */
-    .filter-bar { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 20px; margin-bottom: 16px; }
-    .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-    .filter-row:last-child { margin-bottom: 0; }
-    .filter-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); min-width: 60px; }
+    /* ── Pending banner ── */
+    .pending-banner {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius);
+      padding: 11px 18px; margin-bottom: 14px; gap: 12px;
+    }
+    .pending-banner.none { background: #f0fdf4; border-color: #bbf7d0; }
+    .pending-banner-left { display: flex; align-items: center; gap: 10px; }
+    .pending-count {
+      background: var(--amber); color: #fff; font-size: 13px; font-weight: 800;
+      border-radius: 20px; padding: 2px 10px; min-width: 26px; text-align: center;
+    }
+    .pending-count.zero { background: var(--green); }
+    .pending-banner-msg { font-size: 13px; font-weight: 600; color: var(--text); }
+    .pending-banner-amt { font-size: 13px; font-weight: 700; color: var(--amber); }
+    .pending-banner.none .pending-banner-amt { color: var(--green); }
+    .pending-banner-link {
+      font-size: 12px; font-weight: 700; color: var(--brand-light);
+      background: none; border: none; cursor: pointer; white-space: nowrap;
+      text-decoration: underline; text-underline-offset: 2px;
+    }
+    .pending-banner-link:hover { color: var(--brand); }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 12px 16px; margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
     .filter-bar input, .filter-bar select {
       padding: 7px 11px; border: 1px solid var(--border); border-radius: 7px;
       font-size: 13px; color: var(--text); background: var(--surface); outline: none;
+      height: 34px;
     }
     .filter-bar input:focus, .filter-bar select:focus { border-color: var(--brand-light); }
-    .filter-bar input[type="text"] { min-width: 220px; flex: 1; }
-    .filter-bar input[type="date"] { width: 150px; }
-    .active-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    .filter-bar input[type="text"] { min-width: 200px; flex: 1; }
+    .filter-bar input[type="date"] { width: 146px; }
+    .filter-sep { color: var(--border); font-size: 18px; user-select: none; }
+    .active-filters { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; margin-top: 4px; }
     .filter-chip {
       display: inline-flex; align-items: center; gap: 5px;
       background: var(--brand); color: #fff;
@@ -122,51 +148,68 @@
     .filter-chip button { background: none; border: none; color: rgba(255,255,255,.8); cursor: pointer; font-size: 14px; line-height: 1; padding: 0 0 0 2px; }
     .filter-chip button:hover { color: #fff; }
 
-    /* Log toolbar row (export + sort) */
-    .log-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+    /* Log actions bar */
+    .log-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+    .log-meta { font-size: 13px; color: var(--muted); }
     .btn-export {
       display: flex; align-items: center; gap: 7px;
-      background: #16a34a; color: #fff; border: none; border-radius: 8px;
-      padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s;
+      background: var(--accent); color: #fff; border: none; border-radius: 8px;
+      padding: 8px 18px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s;
     }
-    .btn-export:hover { background: #15803d; }
-    .sort-wrap { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
-    .sort-wrap select { padding: 7px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; color: var(--text); background: var(--surface); outline: none; }
+    .btn-export:hover { background: #d4901a; }
 
     /* ── Table ── */
     .log-table-wrap { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); }
     table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 13px; }
-    thead th { background: var(--brand); color: #fff; padding: 11px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; white-space: nowrap; }
+    thead th {
+      background: var(--brand); color: #fff; padding: 10px 14px;
+      text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
+      white-space: nowrap; cursor: pointer; user-select: none;
+    }
+    thead th:hover { background: var(--brand-light); }
+    thead th.sorted-asc::after  { content: ' ↑'; opacity: 1; }
+    thead th.sorted-desc::after { content: ' ↓'; opacity: 1; }
+    thead th::after { content: ' ↕'; opacity: .3; font-size: 10px; }
+    thead th.no-sort { cursor: default; }
+    thead th.no-sort::after { content: ''; }
     tbody tr { border-bottom: 1px solid var(--border); }
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: #f8fafc; }
-    tbody td { padding: 10px 14px; vertical-align: middle; }
+    tbody td { padding: 9px 14px; vertical-align: middle; }
     .empty-state { padding: 48px; text-align: center; color: var(--muted); font-size: 14px; }
+
+    /* Billable label */
+    .billable-label { font-size: 11px; font-weight: 800; letter-spacing: .4px; }
+    .billable-label.billable    { color: #16a34a; }
+    .billable-label.notbillable { color: #e8a020; }
+    .billable-label.unsure      { color: var(--muted); }
 
     .pill { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 12px; white-space: nowrap; display: inline-block; }
     .pill-billable    { background: var(--blue-bg);  color: #1d4ed8; }
     .pill-notbillable { background: #f1f5f9; color: #475569; }
     .pill-unsure      { background: var(--amber-bg); color: #92400e; }
 
-    .toggle-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 7px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1.5px solid; transition: all .15s; white-space: nowrap; }
-    .toggle-btn.off { background: var(--bg); color: var(--muted); border-color: var(--border); }
-    .toggle-btn.off:hover { background: #e2e8f0; }
-    .toggle-btn.on.billed    { background: var(--green-bg); color: #16a34a; border-color: #86efac; }
-    .toggle-btn.on.processed { background: var(--purple-bg); color: #7c3aed; border-color: #c4b5fd; }
+    /* Checkbox toggle */
+    .cb-wrap { display: flex; align-items: center; justify-content: center; }
+    .cb-wrap input[type="checkbox"] {
+      width: 17px; height: 17px; cursor: pointer; accent-color: var(--brand);
+      border-radius: 4px;
+    }
 
+    /* Row action buttons */
     .btn-edit-row {
       display: inline-flex; align-items: center; gap: 5px;
       border-radius: 7px; padding: 5px 12px; font-size: 12px; font-weight: 600;
       cursor: pointer; transition: all .15s; white-space: nowrap;
     }
     .btn-edit-row.edit {
-      background: var(--bg); color: var(--brand); border: 1px solid var(--border);
+      background: var(--brand); color: #fff; border: none;
     }
-    .btn-edit-row.edit:hover { background: var(--blue-bg); color: var(--blue); border-color: #93c5fd; }
+    .btn-edit-row.edit:hover { background: var(--brand-light); }
     .btn-edit-row.delete {
-      background: var(--red-bg); color: var(--red); border: 1px solid #fca5a5;
+      background: none; color: var(--muted); border: none; padding: 5px 8px;
     }
-    .btn-edit-row.delete:hover { background: var(--red); color: #fff; border-color: var(--red); }
+    .btn-edit-row.delete:hover { color: var(--red); }
 
     /* ── Dashboard ── */
     .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 24px; }
@@ -330,93 +373,79 @@
   <!-- ═══ EXPENSE LOG TAB ═══ -->
   <div id="tab-log" style="display:none;">
 
-    <!-- Filter panel -->
+    <!-- Pending banner -->
+    <div class="pending-banner" id="pending-banner">
+      <div class="pending-banner-left">
+        <span class="pending-count" id="pending-count">0</span>
+        <span class="pending-banner-msg" id="pending-msg">expenses pending processing</span>
+        <span class="pending-banner-amt" id="pending-amt"></span>
+      </div>
+      <button class="pending-banner-link" id="pending-link" onclick="filterUnprocessed()">Show unprocessed only →</button>
+    </div>
+
+    <!-- Filter bar (single row) -->
     <div class="filter-bar">
-      <div class="filter-row">
-        <span class="filter-label">Search</span>
-        <input type="text" id="log-search" placeholder="Name, description, project code…" oninput="renderLog()">
-      </div>
-      <div class="filter-row">
-        <span class="filter-label">Date</span>
-        <input type="date" id="filter-date-from" onchange="renderLog()" title="From date">
-        <span style="font-size:12px;color:var(--muted)">to</span>
-        <input type="date" id="filter-date-to" onchange="renderLog()" title="To date">
-        <span class="filter-label" style="margin-left:8px">Person</span>
-        <select id="filter-person" onchange="renderLog()" style="min-width:160px;">
-          <option value="">All Employees</option>
-        </select>
-        <span class="filter-label" style="margin-left:8px">Type</span>
-        <select id="filter-type" onchange="renderLog()">
-          <option value="">All Types</option>
-          <option value="Mileage">🚗 Mileage</option>
-          <option value="Per Diem">🍽 Per Diem</option>
-          <option value="Out of Pocket">💸 Out of Pocket</option>
-        </select>
-      </div>
-      <div class="filter-row">
-        <span class="filter-label">Billing</span>
-        <select id="filter-billable" onchange="renderLog()">
-          <option value="">All Billing</option>
-          <option value="Billable">Billable</option>
-          <option value="Not Billable">Not Billable</option>
-          <option value="Unsure">Unsure</option>
-        </select>
-        <span class="filter-label" style="margin-left:8px">Status</span>
-        <select id="filter-status" onchange="renderLog()">
-          <option value="">All Statuses</option>
-          <option value="unprocessed">Unprocessed</option>
-          <option value="processed">Processed</option>
-          <option value="billed">Billed</option>
-        </select>
-        <span class="filter-label" style="margin-left:8px">Project</span>
-        <select id="filter-project" onchange="renderLog()" style="min-width:150px;">
-          <option value="">All Projects</option>
-        </select>
-        <button onclick="clearFilters()" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;">✕ Clear Filters</button>
-      </div>
+      <input type="text" id="log-search" placeholder="🔍  Search name, description, project…" oninput="renderLog()">
+      <span class="filter-sep">|</span>
+      <input type="date" id="filter-date-from" onchange="renderLog()" title="From date">
+      <span style="font-size:12px;color:var(--muted)">–</span>
+      <input type="date" id="filter-date-to" onchange="renderLog()" title="To date">
+      <span class="filter-sep">|</span>
+      <select id="filter-person" onchange="renderLog()" style="min-width:150px;">
+        <option value="">All Employees</option>
+      </select>
+      <select id="filter-type" onchange="renderLog()">
+        <option value="">All Types</option>
+        <option value="Mileage">🚗 Mileage</option>
+        <option value="Per Diem">🍽 Per Diem</option>
+        <option value="Out of Pocket">💸 Out of Pocket</option>
+      </select>
+      <select id="filter-billable" onchange="renderLog()">
+        <option value="">All Billing</option>
+        <option value="Billable">Billable</option>
+        <option value="Not Billable">Not Billable</option>
+        <option value="Unsure">Unsure</option>
+      </select>
+      <select id="filter-status" onchange="renderLog()">
+        <option value="">All Statuses</option>
+        <option value="unprocessed">Unprocessed</option>
+        <option value="processed">Processed</option>
+        <option value="billed">Billed</option>
+      </select>
+      <select id="filter-project" onchange="renderLog()" style="min-width:140px;">
+        <option value="">All Projects</option>
+      </select>
+      <button onclick="clearFilters()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;height:34px;">✕ Clear</button>
       <div class="active-filters" id="active-filters"></div>
     </div>
 
-    <!-- Actions row -->
+    <!-- Actions bar -->
     <div class="log-actions">
+      <div id="log-totals" class="log-meta"></div>
       <button class="btn-export" onclick="exportToExcel()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Export to Excel
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export Excel
       </button>
-      <div class="sort-wrap">
-        <span>Sort:</span>
-        <select id="sort-col" onchange="renderLog()">
-          <option value="date-desc">Newest First</option>
-          <option value="date-asc">Oldest First</option>
-          <option value="amount-desc">Amount ↓</option>
-          <option value="amount-asc">Amount ↑</option>
-          <option value="name-asc">Name A–Z</option>
-        </select>
-      </div>
     </div>
 
     <div class="log-table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Employee</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Billing</th>
-            <th>Project Code</th>
-            <th style="text-align:right">Amount</th>
-            <th>Billed</th>
-            <th>Processed</th>
-            <th></th>
+            <th onclick="sortBy('date')"    id="th-date">Date</th>
+            <th onclick="sortBy('name')"    id="th-name">Employee</th>
+            <th onclick="sortBy('type')"    id="th-type">Type</th>
+            <th class="no-sort">Description</th>
+            <th onclick="sortBy('billable')" id="th-billable">Billing</th>
+            <th onclick="sortBy('project')" id="th-project">Project Code</th>
+            <th onclick="sortBy('amount')"  id="th-amount" style="text-align:right">Amount</th>
+            <th class="no-sort" style="text-align:center">Billed</th>
+            <th class="no-sort" style="text-align:center">Processed</th>
+            <th class="no-sort"></th>
           </tr>
         </thead>
         <tbody id="log-body"></tbody>
       </table>
-    </div>
-    <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-      <div id="unprocessed-tally" style="display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:var(--radius);padding:10px 18px;box-shadow:var(--shadow);border-left:4px solid var(--amber);"></div>
-      <div id="log-totals" style="font-size:13px;color:var(--muted);"></div>
     </div>
   </div>
 
@@ -533,6 +562,8 @@ let pollTimer     = null;
 let isSaving      = false;
 let editingItemId = null;
 let deleteItemId  = null;
+let sortField     = 'date';
+let sortDir       = 'desc'; // 'asc' | 'desc'
 
 // ── MSAL ──
 const msalConfig = {
@@ -644,7 +675,8 @@ async function refreshData() {
     populateFilterDropdowns();
     renderSummary();
     renderMyRecent();
-    if (document.getElementById('tab-log').style.display       === 'block') { renderLog(); } else { renderUnprocessedTally(); }
+    renderUnprocessedBanner();
+    if (document.getElementById('tab-log').style.display === 'block') renderLog();
     if (document.getElementById('tab-dashboard').style.display === 'block') renderDashboard();
 
     document.getElementById('last-updated').textContent =
@@ -724,27 +756,44 @@ function renderMyRecent() {
 }
 
 // ── Expense Log ───────────────────────────────────────────
+// ── Sort by column header click ──────────────────────────
+function sortBy(field) {
+  if (sortField === field) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortField = field; sortDir = 'desc'; }
+  updateSortHeaders();
+  renderLog();
+}
+
+function updateSortHeaders() {
+  const fields = ['date','name','type','billable','project','amount'];
+  fields.forEach(f => {
+    const th = document.getElementById('th-' + f);
+    if (!th) return;
+    th.classList.remove('sorted-asc','sorted-desc');
+    if (sortField === f) th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+  });
+}
+
 function getFilteredExpenses() {
-  const search    = (document.getElementById('log-search').value    || '').toLowerCase();
-  const person    = document.getElementById('filter-person').value;
-  const typeF     = document.getElementById('filter-type').value;
-  const billF     = document.getElementById('filter-billable').value;
-  const statusF   = document.getElementById('filter-status').value;
-  const projectF  = document.getElementById('filter-project').value;
-  const dateFrom  = document.getElementById('filter-date-from').value;
-  const dateTo    = document.getElementById('filter-date-to').value;
-  const sortVal   = document.getElementById('sort-col').value;
+  const search   = (document.getElementById('log-search').value   || '').toLowerCase();
+  const person   = document.getElementById('filter-person').value;
+  const typeF    = document.getElementById('filter-type').value;
+  const billF    = document.getElementById('filter-billable').value;
+  const statusF  = document.getElementById('filter-status').value;
+  const projectF = document.getElementById('filter-project').value;
+  const dateFrom = document.getElementById('filter-date-from').value;
+  const dateTo   = document.getElementById('filter-date-to').value;
 
   let rows = expenses.filter(e => {
-    if (person   && e.employeeName !== person)   return false;
-    if (typeF    && e.expenseType  !== typeF)     return false;
-    if (billF    && e.billable     !== billF)     return false;
-    if (projectF && e.projectCode  !== projectF)  return false;
+    if (person   && e.employeeName !== person)  return false;
+    if (typeF    && e.expenseType  !== typeF)    return false;
+    if (billF    && e.billable     !== billF)    return false;
+    if (projectF && e.projectCode  !== projectF) return false;
     if (statusF === 'processed'   && !e.isProcessed) return false;
     if (statusF === 'unprocessed' && e.isProcessed)  return false;
     if (statusF === 'billed'      && !e.isBilled)    return false;
-    if (dateFrom && e.expenseDate < dateFrom)    return false;
-    if (dateTo   && e.expenseDate > dateTo)      return false;
+    if (dateFrom && e.expenseDate < dateFrom)   return false;
+    if (dateTo   && e.expenseDate > dateTo)     return false;
     if (search) {
       const hay = `${e.employeeName} ${e.description} ${e.projectCode} ${e.notes}`.toLowerCase();
       if (!hay.includes(search)) return false;
@@ -752,13 +801,15 @@ function getFilteredExpenses() {
     return true;
   });
 
+  const dir = sortDir === 'asc' ? 1 : -1;
   rows.sort((a, b) => {
-    if (sortVal === 'date-desc')   return b.submittedAt - a.submittedAt;
-    if (sortVal === 'date-asc')    return a.submittedAt - b.submittedAt;
-    if (sortVal === 'amount-desc') return b.amount - a.amount;
-    if (sortVal === 'amount-asc')  return a.amount - b.amount;
-    if (sortVal === 'name-asc')    return a.employeeName.localeCompare(b.employeeName);
-    return 0;
+    if (sortField === 'date')     return (b.submittedAt - a.submittedAt) * -dir;
+    if (sortField === 'amount')   return (a.amount - b.amount) * dir;
+    if (sortField === 'name')     return a.employeeName.localeCompare(b.employeeName) * dir;
+    if (sortField === 'type')     return a.expenseType.localeCompare(b.expenseType) * dir;
+    if (sortField === 'billable') return a.billable.localeCompare(b.billable) * dir;
+    if (sortField === 'project')  return (a.projectCode||'').localeCompare(b.projectCode||'') * dir;
+    return (b.submittedAt - a.submittedAt);
   });
 
   return rows;
@@ -766,10 +817,9 @@ function getFilteredExpenses() {
 
 function renderLog() {
   renderActiveFilterChips();
+  renderUnprocessedBanner();
   const rows = getFilteredExpenses();
   const tbody = document.getElementById('log-body');
-
-  renderUnprocessedTally();
 
   if (rows.length === 0) {
     tbody.innerHTML = `<tr><td colspan="10" class="empty-state">No expenses match your filters.</td></tr>`;
@@ -778,45 +828,41 @@ function renderLog() {
   }
 
   tbody.innerHTML = rows.map(e => {
-    const billClass = e.billable === 'Billable' ? 'pill-billable' :
-                      e.billable === 'Not Billable' ? 'pill-notbillable' : 'pill-unsure';
+    const billLabelClass = e.billable === 'Billable' ? 'billable' :
+                           e.billable === 'Not Billable' ? 'notbillable' : 'unsure';
+    const billLabelText  = e.billable === 'Billable' ? 'BILLABLE' :
+                           e.billable === 'Not Billable' ? 'NON-BILLABLE' : 'UNSURE';
     return `
     <tr>
-      <td style="white-space:nowrap">${fmtDate(e.expenseDate)}</td>
+      <td style="white-space:nowrap;color:var(--muted);font-size:12px">${e.expenseDate}</td>
       <td>
         <strong>${escHtml(e.employeeName)}</strong>
         ${e.email ? `<div style="font-size:10px;color:var(--muted)">${escHtml(e.email)}</div>` : ''}
       </td>
       <td><span class="recent-type-pill ${typeClass(e.expenseType)}">${escHtml(e.expenseType)}</span></td>
       <td>
-        ${escHtml(e.description)}
+        <span style="font-weight:600">${escHtml(e.description)}</span>
         ${e.notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(e.notes)}</div>` : ''}
         ${e.expenseType === 'Mileage' ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${e.miles} mi @ $${e.rate}/mi</div>` : ''}
       </td>
-      <td><span class="pill ${billClass}">${escHtml(e.billable)}</span></td>
-      <td style="font-size:12px;color:var(--muted)">${e.projectCode ? escHtml(e.projectCode) : '—'}</td>
-      <td style="text-align:right;font-weight:700;font-size:14px">${fmtCurrency(e.amount)}</td>
-      <td>
-        <button class="toggle-btn ${e.isBilled ? 'on billed' : 'off'}"
-          onclick="toggleFlag('${e.itemId}','IsBilled',${!e.isBilled})">
-          ${e.isBilled ? '✓ Billed' : '· Billed'}
-        </button>
+      <td><span class="billable-label ${billLabelClass}">${billLabelText}</span></td>
+      <td style="font-size:12px;color:var(--muted);font-weight:600">${e.projectCode ? escHtml(e.projectCode) : '—'}</td>
+      <td style="text-align:right;font-weight:800;font-size:14px;color:${e.amount>0?'var(--green)':'var(--text)'}">${fmtCurrency(e.amount)}</td>
+      <td class="cb-wrap">
+        <input type="checkbox" ${e.isBilled ? 'checked' : ''}
+          onchange="toggleFlag('${e.itemId}','IsBilled',this.checked)"
+          title="${e.isBilled ? 'Mark as not billed' : 'Mark as billed'}">
+      </td>
+      <td class="cb-wrap">
+        <input type="checkbox" ${e.isProcessed ? 'checked' : ''}
+          onchange="toggleFlag('${e.itemId}','IsProcessed',this.checked)"
+          title="${e.isProcessed ? 'Mark as unprocessed' : 'Mark as processed'}">
       </td>
       <td>
-        <button class="toggle-btn ${e.isProcessed ? 'on processed' : 'off'}"
-          onclick="toggleFlag('${e.itemId}','IsProcessed',${!e.isProcessed})">
-          ${e.isProcessed ? '✓ Processed' : '· Processed'}
-        </button>
-      </td>
-      <td>
-        <div style="display:flex;gap:4px">
-          <button class="btn-edit-row edit" onclick="openEditExpense('${e.itemId}')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Edit
-          </button>
-          <button class="btn-edit-row delete" onclick="openDeleteExpense('${e.itemId}')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-            Delete
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="btn-edit-row edit" onclick="openEditExpense('${e.itemId}')">Edit</button>
+          <button class="btn-edit-row delete" onclick="openDeleteExpense('${e.itemId}')" title="Delete">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           </button>
         </div>
       </td>
@@ -825,30 +871,42 @@ function renderLog() {
 
   const filteredTotal = rows.reduce((s, e) => s + e.amount, 0);
   document.getElementById('log-totals').innerHTML =
-    `Showing <strong>${rows.length}</strong> of ${expenses.length} expenses &nbsp;·&nbsp; <strong>Filtered Total: ${fmtCurrency(filteredTotal)}</strong>`;
+    `Showing <strong>${rows.length}</strong> of ${expenses.length} expenses &nbsp;·&nbsp; Filtered Total: <strong>${fmtCurrency(filteredTotal)}</strong>`;
 }
 
-function renderUnprocessedTally() {
+function renderUnprocessedBanner() {
   const unprocessed = expenses.filter(e => !e.isProcessed);
-  const count  = unprocessed.length;
-  const total  = unprocessed.reduce((s, e) => s + e.amount, 0);
-  const el     = document.getElementById('unprocessed-tally');
+  const count = unprocessed.length;
+  const total = unprocessed.reduce((s, e) => s + e.amount, 0);
+  const banner = document.getElementById('pending-banner');
+  const countEl = document.getElementById('pending-count');
+  const msgEl   = document.getElementById('pending-msg');
+  const amtEl   = document.getElementById('pending-amt');
+  const linkEl  = document.getElementById('pending-link');
+  if (!banner) return;
   if (count === 0) {
-    el.innerHTML = `<span style="font-size:13px;font-weight:700;color:var(--green)">✓ All expenses processed</span>`;
-    el.style.borderLeftColor = 'var(--green)';
+    banner.className = 'pending-banner none';
+    countEl.className = 'pending-count zero';
+    countEl.textContent = '✓';
+    msgEl.textContent = 'All expenses have been processed';
+    amtEl.textContent = '';
+    linkEl.style.display = 'none';
   } else {
-    el.style.borderLeftColor = 'var(--amber)';
-    el.innerHTML = `
-      <span style="font-size:20px">⏳</span>
-      <div>
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)">Unprocessed Expenses</div>
-        <div style="font-size:15px;font-weight:800;color:var(--text);margin-top:1px">
-          ${count} expense${count !== 1 ? 's' : ''} &nbsp;·&nbsp;
-          <span style="color:var(--amber)">${fmtCurrency(total)}</span> outstanding
-        </div>
-      </div>`;
+    banner.className = 'pending-banner';
+    countEl.className = 'pending-count';
+    countEl.textContent = count;
+    msgEl.textContent = `expense${count !== 1 ? 's' : ''} pending processing`;
+    amtEl.textContent = `— ${fmtCurrency(total)} outstanding`;
+    linkEl.style.display = 'inline';
   }
 }
+
+function filterUnprocessed() {
+  document.getElementById('filter-status').value = 'unprocessed';
+  renderLog();
+}
+
+function renderUnprocessedTally() { renderUnprocessedBanner(); }
 
 function renderActiveFilterChips() {
   const chips = [];
