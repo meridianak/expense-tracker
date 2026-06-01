@@ -305,6 +305,34 @@
     @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 60%{transform:translateX(6px)} }
     .shake { animation: shake .3s ease; border-color: var(--red) !important; }
 
+    /* ── App Switcher ── */
+    .apps-btn {
+      background: rgba(255,255,255,.12); border: none; border-radius: 8px;
+      color: #fff; padding: 6px 12px; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: background .15s; display: flex; align-items: center; gap: 6px;
+    }
+    .apps-btn:hover { background: rgba(255,255,255,.22); }
+    .apps-dropdown {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      background: var(--surface); border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18); border: 1px solid var(--border);
+      min-width: 240px; padding: 8px; z-index: 300;
+    }
+    .app-entry {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 8px; cursor: pointer;
+      text-decoration: none; color: var(--text); transition: background .12s;
+    }
+    .app-entry:hover { background: var(--bg); }
+    .app-entry-icon {
+      width: 36px; height: 36px; background: #e8a020; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 900; color: #1a3a5c; flex-shrink: 0;
+    }
+    .app-entry-name { font-size: 13px; font-weight: 700; line-height: 1.2; }
+    .app-entry-sub  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .app-entry-sub.current { color: var(--accent); font-weight: 700; }
+
     @media (max-width: 600px) {
       main { padding: 16px; }
       header { padding: 0 14px; }
@@ -351,6 +379,32 @@
   </div>
   <div class="header-right">
     <div class="header-meta"><div id="live-clock"></div><div id="header-date"></div></div>
+    <div style="position:relative" id="apps-menu-wrap">
+      <button class="apps-btn" onclick="toggleAppsMenu(event)" title="Switch app">⊞ Apps</button>
+      <div class="apps-dropdown" id="apps-dropdown" style="display:none">
+        <a class="app-entry" href="https://meridianak.github.io/expense-tracker/" target="_blank" rel="noopener">
+          <div class="app-entry-icon">M</div>
+          <div>
+            <div class="app-entry-name">Receipt Tracker</div>
+            <div class="app-entry-sub">Log and manage receipts</div>
+          </div>
+        </a>
+        <a class="app-entry" href="https://meridianak.github.io/expense-tracker/" target="_blank" rel="noopener">
+          <div class="app-entry-icon">M</div>
+          <div>
+            <div class="app-entry-name">Expense Tracker</div>
+            <div class="app-entry-sub current">Current app</div>
+          </div>
+        </a>
+        <a class="app-entry" href="https://meridianak.github.io/meridian-checkout/" target="_blank" rel="noopener">
+          <div class="app-entry-icon">M</div>
+          <div>
+            <div class="app-entry-name">Device Checkout</div>
+            <div class="app-entry-sub">Track equipment loans</div>
+          </div>
+        </a>
+      </div>
+    </div>
     <button class="user-chip" onclick="signOut()" title="Sign out">
       <div class="user-avatar" id="user-avatar">?</div>
       <span id="user-name">Loading…</span>
@@ -733,22 +787,24 @@ function populateFilterDropdowns() {
     projects.map(p => `<option value="${escHtml(p)}"${p===curProject?' selected':''}>${escHtml(p)}</option>`).join('');
 }
 
-// ── Summary Stats ─────────────────────────────────────────
+// ── Summary Stats (personal — current user only) ──────────
 function renderSummary() {
-  const total    = expenses.length;
-  const totalAmt = expenses.reduce((s, e) => s + e.amount, 0);
-  const pending  = expenses.filter(e => !e.isProcessed).length;
-  const billable = expenses.filter(e => e.billable === 'Billable' && !e.isBilled).length;
-  const myTotal  = expenses.filter(e => e.email === currentUser.email).reduce((s, e) => s + e.amount, 0);
+  if (!currentUser) return;
+  const mine       = expenses.filter(e => e.email === currentUser.email);
+  const total      = mine.length;
+  const totalAmt   = mine.reduce((s, e) => s + e.amount, 0);
+  const pending    = mine.filter(e => !e.isProcessed).length;
+  const billable   = mine.filter(e => e.billable === 'Billable' && !e.isBilled).length;
+  const mileageAmt = mine.filter(e => e.expenseType === 'Mileage').reduce((s, e) => s + e.amount, 0);
 
   document.getElementById('summary-bar').innerHTML = `
     <div class="stat-card" style="border-left:4px solid var(--brand)">
-      <span class="label">Total Expenses</span>
+      <span class="label">My Expenses</span>
       <span class="value" style="color:var(--brand)">${total}</span>
-      <span class="sub">all submissions</span>
+      <span class="sub">your submissions</span>
     </div>
     <div class="stat-card" style="border-left:4px solid var(--accent)">
-      <span class="label">Total Amount</span>
+      <span class="label">My Total</span>
       <span class="value" style="color:var(--accent);font-size:22px">${fmtCurrency(totalAmt)}</span>
       <span class="sub">all time</span>
     </div>
@@ -763,9 +819,9 @@ function renderSummary() {
       <span class="sub">not yet marked billed</span>
     </div>
     <div class="stat-card" style="border-left:4px solid var(--green)">
-      <span class="label">My Total</span>
-      <span class="value" style="color:var(--green);font-size:22px">${fmtCurrency(myTotal)}</span>
-      <span class="sub">your submissions</span>
+      <span class="label">Mileage</span>
+      <span class="value" style="color:var(--green);font-size:22px">${fmtCurrency(mileageAmt)}</span>
+      <span class="sub">reimbursement earned</span>
     </div>`;
 }
 
@@ -1438,6 +1494,17 @@ function showLoading(msg) { document.getElementById('signin-screen').style.displ
 function hideScreens() { document.getElementById('signin-screen').style.display = 'none'; document.getElementById('loading-screen').style.display = 'none'; }
 
 function startPolling() { clearInterval(pollTimer); pollTimer = setInterval(refreshData, CONFIG.pollInterval); }
+
+// ── App Switcher ──────────────────────────────────────────
+function toggleAppsMenu(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('apps-dropdown');
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', () => {
+  const dd = document.getElementById('apps-dropdown');
+  if (dd) dd.style.display = 'none';
+});
 function startClock() {
   function tick() {
     const now = new Date();
