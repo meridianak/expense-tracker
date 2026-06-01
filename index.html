@@ -414,7 +414,10 @@
         <tbody id="log-body"></tbody>
       </table>
     </div>
-    <div id="log-totals" style="margin-top:14px;text-align:right;font-size:13px;color:var(--muted);"></div>
+    <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div id="unprocessed-tally" style="display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:var(--radius);padding:10px 18px;box-shadow:var(--shadow);border-left:4px solid var(--amber);"></div>
+      <div id="log-totals" style="font-size:13px;color:var(--muted);"></div>
+    </div>
   </div>
 
   <!-- ═══ DASHBOARD TAB ═══ -->
@@ -641,7 +644,7 @@ async function refreshData() {
     populateFilterDropdowns();
     renderSummary();
     renderMyRecent();
-    if (document.getElementById('tab-log').style.display       === 'block') renderLog();
+    if (document.getElementById('tab-log').style.display       === 'block') { renderLog(); } else { renderUnprocessedTally(); }
     if (document.getElementById('tab-dashboard').style.display === 'block') renderDashboard();
 
     document.getElementById('last-updated').textContent =
@@ -766,6 +769,8 @@ function renderLog() {
   const rows = getFilteredExpenses();
   const tbody = document.getElementById('log-body');
 
+  renderUnprocessedTally();
+
   if (rows.length === 0) {
     tbody.innerHTML = `<tr><td colspan="10" class="empty-state">No expenses match your filters.</td></tr>`;
     document.getElementById('log-totals').textContent = '';
@@ -821,6 +826,28 @@ function renderLog() {
   const filteredTotal = rows.reduce((s, e) => s + e.amount, 0);
   document.getElementById('log-totals').innerHTML =
     `Showing <strong>${rows.length}</strong> of ${expenses.length} expenses &nbsp;·&nbsp; <strong>Filtered Total: ${fmtCurrency(filteredTotal)}</strong>`;
+}
+
+function renderUnprocessedTally() {
+  const unprocessed = expenses.filter(e => !e.isProcessed);
+  const count  = unprocessed.length;
+  const total  = unprocessed.reduce((s, e) => s + e.amount, 0);
+  const el     = document.getElementById('unprocessed-tally');
+  if (count === 0) {
+    el.innerHTML = `<span style="font-size:13px;font-weight:700;color:var(--green)">✓ All expenses processed</span>`;
+    el.style.borderLeftColor = 'var(--green)';
+  } else {
+    el.style.borderLeftColor = 'var(--amber)';
+    el.innerHTML = `
+      <span style="font-size:20px">⏳</span>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)">Unprocessed Expenses</div>
+        <div style="font-size:15px;font-weight:800;color:var(--text);margin-top:1px">
+          ${count} expense${count !== 1 ? 's' : ''} &nbsp;·&nbsp;
+          <span style="color:var(--amber)">${fmtCurrency(total)}</span> outstanding
+        </div>
+      </div>`;
+  }
 }
 
 function renderActiveFilterChips() {
