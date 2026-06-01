@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meridian Management — Expense Tracker</title>
+
+  <!-- Microsoft Authentication Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand:       #1a3a5c;
+      --brand-light: #2a5a8c;
+      --accent:      #e8a020;
+      --bg:          #f0f4f8;
+      --surface:     #ffffff;
+      --border:      #d0dae6;
+      --text:        #1e2b3a;
+      --muted:       #6b7c93;
+      --green:       #22c55e;
+      --green-bg:    #dcfce7;
+      --red:         #ef4444;
+      --red-bg:      #fee2e2;
+      --amber:       #f59e0b;
+      --amber-bg:    #fef3c7;
+      --blue:        #3b82f6;
+      --blue-bg:     #dbeafe;
+      --shadow:      0 2px 12px rgba(26,58,92,.10);
+      --radius:      10px;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh;
+    }
+
+    /* ── Full-screen overlays ── */
+    .screen {
+      position: fixed; inset: 0; z-index: 500;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 18px; padding: 24px; text-align: center;
+    }
+    #signin-screen { background: var(--brand); color: #fff; }
+    #loading-screen { background: var(--brand); color: #fff; }
+
+    .screen-logo {
+      width: 64px; height: 64px; background: var(--accent);
+      border-radius: 16px; display: flex; align-items: center;
+      justify-content: center; font-size: 32px; font-weight: 900; color: var(--brand);
+      margin-bottom: 4px;
+    }
+    .screen h2 { font-size: 22px; font-weight: 800; }
+    .screen p  { font-size: 14px; opacity: .7; max-width: 320px; line-height: 1.5; }
+    .screen .sub { font-size: 12px; opacity: .5; }
+
+    .ms-btn {
+      display: flex; align-items: center; gap: 12px;
+      background: #fff; color: #1a1a1a;
+      border: none; border-radius: 4px;
+      padding: 12px 20px; font-size: 15px; font-weight: 600;
+      cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.2);
+      transition: box-shadow .15s; margin-top: 8px;
+    }
+    .ms-btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,.3); }
+    .ms-btn svg { flex-shrink: 0; }
+
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid rgba(255,255,255,.25);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading-msg { font-size: 13px; opacity: .6; }
+
+    /* ── Header ── */
+    header {
+      background: var(--brand); color: #fff;
+      padding: 0 32px; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon {
+      width: 38px; height: 38px; background: var(--accent);
+      border-radius: 8px; display: flex; align-items: center;
+      justify-content: center; font-size: 20px; font-weight: 900; color: var(--brand);
+    }
+    .logo h1 { font-size: 17px; font-weight: 700; }
+    .logo p  { font-size: 11px; opacity: .7; }
+    .header-right { display: flex; align-items: center; gap: 14px; }
+    .header-meta  { font-size: 12px; opacity: .7; text-align: right; }
+    #live-clock   { font-size: 14px; font-weight: 600; opacity: 1; }
+    .user-chip {
+      background: rgba(255,255,255,.12); border-radius: 20px;
+      padding: 5px 12px 5px 8px; display: flex; align-items: center; gap: 7px;
+      font-size: 12px; font-weight: 600; cursor: pointer; border: none; color: #fff;
+      transition: background .15s;
+    }
+    .user-chip:hover { background: rgba(255,255,255,.22); }
+    .user-avatar {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--accent); color: var(--brand);
+      font-size: 11px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Refresh bar ── */
+    #refresh-bar {
+      background: #e8f4fd; border-bottom: 1px solid #bee3f8;
+      padding: 6px 32px; display: flex; align-items: center;
+      justify-content: space-between; font-size: 12px; color: #2a6496;
+    }
+    #refresh-bar button {
+      background: none; border: 1px solid #2a6496; border-radius: 5px;
+      padding: 3px 10px; font-size: 11px; font-weight: 700;
+      color: #2a6496; cursor: pointer;
+    }
+    #refresh-bar button:hover { background: #2a6496; color: #fff; }
+
+    /* ── Nav Tabs ── */
+    nav {
+      background: var(--brand-light);
+      display: flex; gap: 2px; padding: 0 32px;
+    }
+    nav button {
+      background: transparent; border: none; color: rgba(255,255,255,.7);
+      padding: 10px 20px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border-bottom: 3px solid transparent;
+      transition: all .2s;
+    }
+    nav button.active, nav button:hover { color: #fff; border-bottom-color: var(--accent); }
+
+    /* ── Main ── */
+    main { padding: 28px 32px; max-width: 1280px; margin: 0 auto; }
+
+    /* ── Summary Cards ── */
+    .summary-bar {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px; margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 16px 20px; box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .stat-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+    .stat-card .value { font-size: 28px; font-weight: 800; line-height: 1; }
+    .stat-card .sub   { font-size: 12px; color: var(--muted); }
+
+    /* ── Landing / Portal ── */
+    .portal-hero {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 60px 20px; text-align: center; gap: 16px;
+    }
+    .portal-hero .hero-icon {
+      font-size: 64px; line-height: 1;
+    }
+    .portal-hero h2 { font-size: 26px; font-weight: 800; color: var(--brand); }
+    .portal-hero p  { font-size: 15px; color: var(--muted); max-width: 460px; line-height: 1.6; }
+    .btn-log-expense {
+      background: var(--brand); color: #fff;
+      border: none; border-radius: 10px;
+      padding: 16px 36px; font-size: 16px; font-weight: 700;
+      cursor: pointer; transition: background .15s, transform .1s;
+      box-shadow: 0 4px 16px rgba(26,58,92,.25);
+      margin-top: 8px;
+    }
+    .btn-log-expense:hover { background: var(--brand-light); transform: translateY(-1px); }
+
+    /* Recent submissions on portal */
+    .my-recent {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 20px 24px; max-width: 700px; margin: 0 auto;
+    }
+    .my-recent h3 { font-size: 14px; font-weight: 800; color: var(--brand); margin-bottom: 14px; }
+    .recent-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .recent-row:last-child { border-bottom: none; }
+    .recent-type-pill {
+      font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 12px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .type-mileage   { background: var(--blue-bg);  color: #1d4ed8; }
+    .type-perdiem   { background: var(--amber-bg); color: #92400e; }
+    .type-oop       { background: var(--green-bg); color: #166534; }
+    .recent-info    { flex: 1; min-width: 0; }
+    .recent-desc    { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .recent-meta    { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .recent-amount  { font-size: 14px; font-weight: 800; color: var(--brand); flex-shrink: 0; }
+
+    /* ── Expense Log Tab ── */
+    .log-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
+    .log-toolbar input, .log-toolbar select {
+      padding: 8px 12px; border: 1px solid var(--border); border-radius: 7px;
+      font-size: 13px; color: var(--text); background: var(--surface); outline: none;
+    }
+    .log-toolbar input:focus, .log-toolbar select:focus { border-color: var(--brand-light); }
+    .log-table-wrap { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 13px; }
+    thead th {
+      background: var(--brand); color: #fff; padding: 11px 14px;
+      text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
+      white-space: nowrap; cursor: pointer; user-select: none;
+    }
+    thead th:hover { background: var(--brand-light); }
+    thead th .sort-icon { margin-left: 4px; opacity: .6; }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f8fafc; }
+    tbody td { padding: 10px 14px; vertical-align: middle; }
+    .empty-state { padding: 48px; text-align: center; color: var(--muted); font-size: 14px; }
+
+    /* Status pills */
+    .pill {
+      font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 12px;
+      white-space: nowrap; display: inline-block;
+    }
+    .pill-billable    { background: var(--blue-bg);  color: #1d4ed8; }
+    .pill-notbillable { background: #f1f5f9; color: #475569; }
+    .pill-unsure      { background: var(--amber-bg); color: #92400e; }
+    .pill-billed      { background: var(--green-bg); color: #166534; }
+    .pill-processed   { background: var(--green-bg); color: #166534; }
+
+    /* Checkbox-style toggles for billed/processed */
+    .toggle-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 7px; font-size: 11px; font-weight: 700;
+      cursor: pointer; border: 1.5px solid; transition: all .15s; white-space: nowrap;
+    }
+    .toggle-btn.off {
+      background: var(--bg); color: var(--muted); border-color: var(--border);
+    }
+    .toggle-btn.off:hover { background: #e2e8f0; }
+    .toggle-btn.on.billed {
+      background: var(--green-bg); color: #16a34a; border-color: #86efac;
+    }
+    .toggle-btn.on.processed {
+      background: #ede9fe; color: #7c3aed; border-color: #c4b5fd;
+    }
+
+    .btn-edit-row {
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
+      color: var(--muted); transition: all .15s;
+    }
+    .btn-edit-row:hover { background: var(--bg); color: var(--text); border-color: var(--brand-light); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border-radius: 14px; padding: 32px;
+      width: 480px; max-width: calc(100vw - 40px); max-height: calc(100vh - 60px);
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      animation: pop .2s ease;
+    }
+    @keyframes pop { from { transform: scale(.92); opacity:0; } to { transform: scale(1); opacity:1; } }
+    .modal h3 { font-size: 18px; font-weight: 800; color: var(--brand); margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 13px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 14px; color: var(--text);
+      background: var(--surface); outline: none; transition: border-color .15s;
+      font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--brand-light); box-shadow: 0 0 0 3px rgba(42,90,140,.12);
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+    .btn-confirm {
+      flex: 1; padding: 11px; font-size: 14px; font-weight: 700;
+      border: none; border-radius: 8px; cursor: pointer;
+      background: var(--brand); color: #fff; transition: background .15s;
+    }
+    .btn-confirm:hover { background: var(--brand-light); }
+    .btn-confirm:disabled { opacity: .55; cursor: not-allowed; }
+    .btn-confirm.green { background: var(--green); }
+    .btn-confirm.green:hover { background: #16a34a; }
+    .btn-confirm.danger { background: var(--red); }
+    .btn-cancel {
+      flex: 1; padding: 11px; font-size: 14px; font-weight: 700;
+      background: var(--bg); color: var(--muted);
+      border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+    }
+    .btn-cancel:hover { background: var(--border); color: var(--text); }
+
+    /* Mileage calc preview */
+    #mileage-calc-preview {
+      background: var(--blue-bg); border-radius: 8px; padding: 10px 14px;
+      font-size: 13px; font-weight: 600; color: #1d4ed8; margin-top: 6px;
+      display: none;
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 28px; right: 28px; z-index: 600;
+      background: var(--brand); color: #fff;
+      padding: 13px 22px; border-radius: 10px; font-size: 14px; font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0,0,0,.2);
+      transform: translateY(80px); opacity: 0; transition: all .3s ease;
+      pointer-events: none;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { background: #16a34a; }
+    #toast.error   { background: var(--red); }
+    #toast.info    { background: var(--brand-light); }
+
+    /* Shake animation for required fields */
+    @keyframes shake {
+      0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 60%{transform:translateX(6px)}
+    }
+    .shake { animation: shake .3s ease; border-color: var(--red) !important; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      main { padding: 16px; }
+      header { padding: 0 14px; }
+      nav { padding: 0 14px; }
+      #refresh-bar { padding: 6px 14px; }
+      .logo p { display: none; }
+      #live-clock { display: none; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ SIGN-IN SCREEN ═══════════════ -->
+<div class="screen" id="signin-screen">
+  <div class="screen-logo">M</div>
+  <h2>Meridian Management</h2>
+  <p>Expense Tracker</p>
+  <p style="opacity:.55;font-size:13px">Sign in with your Meridian Microsoft account to continue</p>
+  <button class="ms-btn" onclick="signIn()">
+    <svg width="21" height="21" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+      <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+      <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+      <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+    </svg>
+    Sign in with Microsoft
+  </button>
+  <p class="sub" style="margin-top:4px">Use your @meridianak.com account</p>
+</div>
+
+<!-- ═══════════════ LOADING SCREEN ═══════════════ -->
+<div class="screen" id="loading-screen" style="display:none;">
+  <div class="screen-logo">M</div>
+  <div class="spinner"></div>
+  <p id="loading-msg">Loading…</p>
+</div>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">M</div>
+    <div>
+      <h1>Meridian Management</h1>
+      <p>Expense Tracker</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-meta">
+      <div id="live-clock"></div>
+      <div id="header-date"></div>
+    </div>
+    <button class="user-chip" onclick="signOut()" title="Click to sign out">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span id="user-name">Loading…</span>
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════════ REFRESH BAR ═══════════════ -->
+<div id="refresh-bar">
+  <span>Last updated: <strong id="last-updated">—</strong> &nbsp;·&nbsp; Auto-refreshes every 60 seconds</span>
+  <button onclick="refreshData()">↻ Refresh Now</button>
+</div>
+
+<!-- ═══════════════ NAV ═══════════════ -->
+<nav>
+  <button class="active" onclick="showTab('portal')" id="nav-portal">💳 Log Expense</button>
+  <button onclick="showTab('log')" id="nav-log">📋 Expense Log</button>
+</nav>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<main>
+
+  <!-- PORTAL TAB -->
+  <div id="tab-portal">
+    <div class="summary-bar" id="summary-bar"></div>
+
+    <div class="portal-hero">
+      <div class="hero-icon">💳</div>
+      <h2>Submit an Expense</h2>
+      <p>Log mileage, per diem, or out-of-pocket expenses. All submissions are stored in SharePoint and visible to your team.</p>
+      <button class="btn-log-expense" onclick="openExpenseModal()">+ Log an Expense</button>
+    </div>
+
+    <div class="my-recent" id="my-recent-wrap" style="display:none;">
+      <h3>My Recent Submissions</h3>
+      <div id="my-recent-list"></div>
+    </div>
+  </div>
+
+  <!-- EXPENSE LOG TAB -->
+  <div id="tab-log" style="display:none;">
+    <div class="log-toolbar">
+      <input type="text" id="log-search" placeholder="🔍  Search name, description, project…"
+             style="flex:1;min-width:200px;" oninput="renderLog()">
+      <select id="filter-type" onchange="renderLog()">
+        <option value="">All Types</option>
+        <option value="Mileage">🚗 Mileage</option>
+        <option value="Per Diem">🍽 Per Diem</option>
+        <option value="Out of Pocket">💸 Out of Pocket</option>
+      </select>
+      <select id="filter-billable" onchange="renderLog()">
+        <option value="">All Billing</option>
+        <option value="Billable">Billable</option>
+        <option value="Not Billable">Not Billable</option>
+        <option value="Unsure">Unsure</option>
+      </select>
+      <select id="filter-status" onchange="renderLog()">
+        <option value="">All Statuses</option>
+        <option value="unprocessed">Unprocessed</option>
+        <option value="processed">Processed</option>
+        <option value="billed">Billed</option>
+      </select>
+      <select id="sort-col" onchange="renderLog()">
+        <option value="date-desc">Newest First</option>
+        <option value="date-asc">Oldest First</option>
+        <option value="amount-desc">Amount ↓</option>
+        <option value="amount-asc">Amount ↑</option>
+        <option value="name-asc">Name A–Z</option>
+      </select>
+    </div>
+    <div class="log-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Employee</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Billing</th>
+            <th>Project Code</th>
+            <th style="text-align:right">Amount</th>
+            <th>Billed</th>
+            <th>Processed</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+    <div id="log-totals" style="margin-top:14px;text-align:right;font-size:13px;color:var(--muted);"></div>
+  </div>
+
+</main>
+
+<!-- ═══════════════ LOG / EDIT EXPENSE MODAL ═══════════════ -->
+<div class="modal-overlay" id="expense-modal">
+  <div class="modal">
+    <h3 id="expense-modal-title">Log an Expense</h3>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Employee Name *</label>
+        <input type="text" id="exp-name" placeholder="e.g. John Smith" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label>Date *</label>
+        <input type="date" id="exp-date" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Expense Type *</label>
+      <select id="exp-type" onchange="onTypeChange()">
+        <option value="">— Select type —</option>
+        <option value="Mileage">🚗 Mileage</option>
+        <option value="Per Diem">🍽 Per Diem</option>
+        <option value="Out of Pocket">💸 Out of Pocket</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Description / Purpose *</label>
+      <input type="text" id="exp-desc" placeholder="e.g. Drive to Anchorage project site" autocomplete="off" />
+    </div>
+
+    <!-- Mileage fields -->
+    <div id="mileage-fields" style="display:none;">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Miles Driven *</label>
+          <input type="number" id="exp-miles" placeholder="0" min="0" step="0.1" oninput="calcMileage()" />
+        </div>
+        <div class="form-group">
+          <label>IRS Rate ($/mile)</label>
+          <input type="number" id="exp-rate" value="0.70" step="0.001" oninput="calcMileage()" />
+        </div>
+      </div>
+      <div id="mileage-calc-preview">Reimbursement: $0.00</div>
+    </div>
+
+    <!-- Dollar amount fields (Per Diem / Out of Pocket) -->
+    <div id="amount-fields" style="display:none;">
+      <div class="form-group">
+        <label id="amount-label">Amount ($) *</label>
+        <input type="number" id="exp-amount" placeholder="0.00" min="0" step="0.01" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Billable? *</label>
+      <select id="exp-billable" onchange="onBillableChange()">
+        <option value="">— Select —</option>
+        <option value="Billable">✅ Billable</option>
+        <option value="Not Billable">❌ Not Billable</option>
+        <option value="Unsure">❓ Unsure</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="project-code-group" style="display:none;">
+      <label>Project Code *</label>
+      <input type="text" id="exp-project" placeholder="e.g. ANC-2024-07" autocomplete="off" />
+    </div>
+
+    <div class="form-group">
+      <label>Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <textarea id="exp-notes" rows="2" placeholder="Any additional details…"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('expense-modal')">Cancel</button>
+      <button class="btn-confirm" id="expense-save-btn" onclick="saveExpense()">💾 Submit Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ DELETE CONFIRM MODAL ═══════════════ -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal" style="width:380px;">
+    <h3>Delete Expense?</h3>
+    <p style="font-size:14px;color:var(--text);margin-bottom:20px;line-height:1.6;" id="delete-modal-msg"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('delete-modal')">Cancel</button>
+      <button class="btn-confirm danger" id="delete-confirm-btn" onclick="confirmDelete()">🗑 Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ═══════════════ SCRIPT ═══════════════ -->
+<script>
+// ════════════════════════════════════════════════════════════
+//  CONFIG — reuses same Azure app registration as Device Checkout
+// ════════════════════════════════════════════════════════════
+const CONFIG = {
+  clientId:         "ff1fd3ee-7baf-4d72-b978-742a29de8eab",
+  tenantId:         "4fa4840a-2a70-49e0-93ab-fd8b099bbeed",
+  siteHostname:     "meridianak.sharepoint.com",
+  expenseListName:  "ExpenseLog",          // SharePoint list to create
+  pollInterval:     60000                  // 60 sec auto-refresh
+};
+// ════════════════════════════════════════════════════════════
+
+// ── IRS mileage rate (2025) ──────────────────────────────
+const DEFAULT_IRS_RATE = 0.70;
+
+// ── State ──────────────────────────────────────────────────
+let msalInstance  = null;
+let siteId        = null;
+let expenses      = [];          // array of expense objects loaded from SharePoint
+let currentUser   = null;        // { name, email }
+let pollTimer     = null;
+let isSaving      = false;
+let editingItemId = null;        // null = new, string = editing existing
+let deleteItemId  = null;
+let sortCol       = 'date-desc';
+
+// ── MSAL Init ─────────────────────────────────────────────
+const msalConfig = {
+  auth: {
+    clientId:    CONFIG.clientId,
+    authority:   `https://login.microsoftonline.com/${CONFIG.tenantId}`,
+    redirectUri: window.location.origin + window.location.pathname
+  },
+  cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: true }
+};
+const graphScopes = ['https://graph.microsoft.com/Sites.ReadWrite.All'];
+
+async function initMsal() {
+  try {
+    msalInstance = new msal.PublicClientApplication(msalConfig);
+    await msalInstance.initialize();
+    showLoading('Checking authentication…');
+    const response = await msalInstance.handleRedirectPromise();
+    if (response) {
+      msalInstance.setActiveAccount(response.account);
+      await startApp();
+    } else {
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length > 0) {
+        msalInstance.setActiveAccount(accounts[0]);
+        await startApp();
+      } else {
+        showSignIn();
+      }
+    }
+  } catch (e) {
+    console.error('MSAL init error:', e);
+    showSignIn();
+  }
+}
+
+function signIn()  { msalInstance.loginRedirect({ scopes: graphScopes }); }
+function signOut() {
+  if (!confirm('Sign out of Expense Tracker?')) return;
+  clearInterval(pollTimer);
+  msalInstance.logoutRedirect({ postLogoutRedirectUri: window.location.href });
+}
+
+async function getToken() {
+  const account = msalInstance.getActiveAccount();
+  try {
+    const res = await msalInstance.acquireTokenSilent({ scopes: graphScopes, account });
+    return res.accessToken;
+  } catch (e) {
+    if (e instanceof msal.InteractionRequiredAuthError) {
+      msalInstance.acquireTokenRedirect({ scopes: graphScopes, account });
+    }
+    throw e;
+  }
+}
+
+// ── Graph API helper ──────────────────────────────────────
+async function graph(path, options = {}) {
+  const token = await getToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+  if (res.status === 204) return null;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || `Graph API error ${res.status}`);
+  return data;
+}
+
+// ── App Start ─────────────────────────────────────────────
+async function startApp() {
+  const account = msalInstance.getActiveAccount();
+  showLoading('Connecting to SharePoint…');
+
+  currentUser = {
+    name:  account.name  || account.username.split('@')[0],
+    email: account.username
+  };
+  document.getElementById('user-name').textContent   = currentUser.name;
+  document.getElementById('user-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
+
+  try {
+    const site = await graph(`/sites/${CONFIG.siteHostname}`);
+    siteId = site.id;
+
+    showLoading('Loading expenses…');
+    await ensureExpenseList();
+    await refreshData();
+
+    hideScreens();
+    startPolling();
+    startClock();
+  } catch (e) {
+    console.error('App start error:', e);
+    showLoading('⚠ Error loading data. Check setup guide.\n' + e.message);
+  }
+}
+
+// ── Ensure ExpenseLog list exists ─────────────────────────
+async function ensureExpenseList() {
+  try {
+    await graph(`/sites/${siteId}/lists/${encodeURIComponent(CONFIG.expenseListName)}`);
+  } catch (e) {
+    // List doesn't exist — create it
+    showLoading('Creating ExpenseLog list in SharePoint…');
+    await graph(`/sites/${siteId}/lists`, {
+      method: 'POST',
+      body: JSON.stringify({
+        displayName: CONFIG.expenseListName,
+        list: { template: 'genericList' }
+      })
+    });
+    // Add custom columns
+    const cols = [
+      { name: 'EmployeeName',  type: 'text'   },
+      { name: 'EmployeeEmail', type: 'text'   },
+      { name: 'ExpenseDate',   type: 'text'   },
+      { name: 'ExpenseType',   type: 'text'   },
+      { name: 'Description',   type: 'text'   },
+      { name: 'Miles',         type: 'number' },
+      { name: 'Rate',          type: 'number' },
+      { name: 'Amount',        type: 'number' },
+      { name: 'Billable',      type: 'text'   },
+      { name: 'ProjectCode',   type: 'text'   },
+      { name: 'Notes',         type: 'text'   },
+      { name: 'IsBilled',      type: 'boolean'},
+      { name: 'IsProcessed',   type: 'boolean'},
+      { name: 'SubmittedAt',   type: 'number' }
+    ];
+    for (const col of cols) {
+      try {
+        await graph(`/sites/${siteId}/lists/${encodeURIComponent(CONFIG.expenseListName)}/columns`, {
+          method: 'POST',
+          body: JSON.stringify({ name: col.name, [col.type]: {} })
+        });
+      } catch (colErr) {
+        console.warn(`Could not create column ${col.name}:`, colErr.message);
+      }
+    }
+  }
+}
+
+// ── Refresh Data ──────────────────────────────────────────
+async function refreshData() {
+  try {
+    const res = await graph(
+      `/sites/${siteId}/lists/${encodeURIComponent(CONFIG.expenseListName)}/items?$expand=fields&$top=2000&$orderby=fields/SubmittedAt desc`
+    );
+    expenses = (res.value || []).map(item => {
+      const f = item.fields;
+      return {
+        itemId:       item.id,
+        employeeName: f.EmployeeName  || '',
+        email:        f.EmployeeEmail || '',
+        expenseDate:  f.ExpenseDate   || '',
+        expenseType:  f.ExpenseType   || '',
+        description:  f.Description  || '',
+        miles:        f.Miles        || 0,
+        rate:         f.Rate         || DEFAULT_IRS_RATE,
+        amount:       f.Amount       || 0,
+        billable:     f.Billable     || '',
+        projectCode:  f.ProjectCode  || '',
+        notes:        f.Notes        || '',
+        isBilled:     !!f.IsBilled,
+        isProcessed:  !!f.IsProcessed,
+        submittedAt:  f.SubmittedAt  || 0
+      };
+    });
+
+    renderSummary();
+    renderMyRecent();
+    if (document.getElementById('tab-log').style.display === 'block') renderLog();
+
+    document.getElementById('last-updated').textContent =
+      new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  } catch (e) {
+    console.error('Refresh error:', e);
+    toast('Could not refresh data — check your connection', 'error');
+  }
+}
+
+// ── Summary Stats ─────────────────────────────────────────
+function renderSummary() {
+  const total    = expenses.length;
+  const totalAmt = expenses.reduce((s, e) => s + e.amount, 0);
+  const pending  = expenses.filter(e => !e.isProcessed).length;
+  const billable = expenses.filter(e => e.billable === 'Billable' && !e.isBilled).length;
+  const myTotal  = expenses.filter(e => e.email === currentUser.email)
+                           .reduce((s, e) => s + e.amount, 0);
+
+  document.getElementById('summary-bar').innerHTML = `
+    <div class="stat-card" style="border-left:4px solid var(--brand)">
+      <span class="label">Total Expenses</span>
+      <span class="value" style="color:var(--brand)">${total}</span>
+      <span class="sub">all time</span>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--accent)">
+      <span class="label">Total Amount</span>
+      <span class="value" style="color:var(--accent);font-size:22px">${fmtCurrency(totalAmt)}</span>
+      <span class="sub">across all submissions</span>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--amber)">
+      <span class="label">Unprocessed</span>
+      <span class="value" style="color:var(--amber)">${pending}</span>
+      <span class="sub">awaiting acknowledgment</span>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--blue)">
+      <span class="label">Billable Unbilled</span>
+      <span class="value" style="color:var(--blue)">${billable}</span>
+      <span class="sub">not yet marked billed</span>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--green)">
+      <span class="label">My Submissions</span>
+      <span class="value" style="color:var(--green);font-size:22px">${fmtCurrency(myTotal)}</span>
+      <span class="sub">your total</span>
+    </div>`;
+}
+
+// ── My Recent ─────────────────────────────────────────────
+function renderMyRecent() {
+  const mine = expenses.filter(e => e.email === currentUser.email).slice(0, 5);
+  const wrap = document.getElementById('my-recent-wrap');
+  if (mine.length === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  document.getElementById('my-recent-list').innerHTML = mine.map(e => `
+    <div class="recent-row">
+      <span class="recent-type-pill ${typeClass(e.expenseType)}">${e.expenseType}</span>
+      <div class="recent-info">
+        <div class="recent-desc">${escHtml(e.description)}</div>
+        <div class="recent-meta">${fmtDate(e.expenseDate)} · ${escHtml(e.billable)}${e.projectCode ? ' · ' + escHtml(e.projectCode) : ''}</div>
+      </div>
+      <span class="recent-amount">${fmtCurrency(e.amount)}</span>
+    </div>`).join('');
+}
+
+// ── Expense Log ───────────────────────────────────────────
+function renderLog() {
+  const search   = (document.getElementById('log-search').value  || '').toLowerCase();
+  const typeF    = document.getElementById('filter-type').value;
+  const billF    = document.getElementById('filter-billable').value;
+  const statusF  = document.getElementById('filter-status').value;
+  const sortVal  = document.getElementById('sort-col').value;
+
+  let rows = expenses.filter(e => {
+    if (typeF   && e.expenseType !== typeF)   return false;
+    if (billF   && e.billable    !== billF)   return false;
+    if (statusF === 'processed'  && !e.isProcessed) return false;
+    if (statusF === 'unprocessed' && e.isProcessed) return false;
+    if (statusF === 'billed'     && !e.isBilled)    return false;
+    if (search) {
+      const hay = `${e.employeeName} ${e.description} ${e.projectCode} ${e.notes}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  rows.sort((a, b) => {
+    if (sortVal === 'date-desc')   return b.submittedAt - a.submittedAt;
+    if (sortVal === 'date-asc')    return a.submittedAt - b.submittedAt;
+    if (sortVal === 'amount-desc') return b.amount - a.amount;
+    if (sortVal === 'amount-asc')  return a.amount - b.amount;
+    if (sortVal === 'name-asc')    return a.employeeName.localeCompare(b.employeeName);
+    return 0;
+  });
+
+  const tbody = document.getElementById('log-body');
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">No expenses found matching your filters.</td></tr>`;
+    document.getElementById('log-totals').textContent = '';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(e => {
+    const billClass = e.billable === 'Billable' ? 'pill-billable' :
+                      e.billable === 'Not Billable' ? 'pill-notbillable' : 'pill-unsure';
+    return `
+    <tr>
+      <td style="white-space:nowrap">${fmtDate(e.expenseDate)}</td>
+      <td><strong>${escHtml(e.employeeName)}</strong>
+          ${e.email ? `<div style="font-size:10px;color:var(--muted)">${escHtml(e.email)}</div>` : ''}
+      </td>
+      <td><span class="recent-type-pill ${typeClass(e.expenseType)}">${escHtml(e.expenseType)}</span></td>
+      <td>
+        ${escHtml(e.description)}
+        ${e.notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(e.notes)}</div>` : ''}
+        ${e.expenseType === 'Mileage' ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${e.miles} mi @ $${e.rate}/mi</div>` : ''}
+      </td>
+      <td><span class="pill ${billClass}">${escHtml(e.billable)}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${e.projectCode ? escHtml(e.projectCode) : '—'}</td>
+      <td style="text-align:right;font-weight:700;font-size:14px">${fmtCurrency(e.amount)}</td>
+      <td>
+        <button class="toggle-btn ${e.isBilled ? 'on billed' : 'off'}"
+          onclick="toggleFlag('${e.itemId}', 'IsBilled', ${!e.isBilled})"
+          title="${e.isBilled ? 'Mark as not billed' : 'Mark as billed'}">
+          ${e.isBilled ? '✓ Billed' : '· Billed'}
+        </button>
+      </td>
+      <td>
+        <button class="toggle-btn ${e.isProcessed ? 'on processed' : 'off'}"
+          onclick="toggleFlag('${e.itemId}', 'IsProcessed', ${!e.isProcessed})"
+          title="${e.isProcessed ? 'Mark as unprocessed' : 'Mark as processed'}">
+          ${e.isProcessed ? '✓ Processed' : '· Processed'}
+        </button>
+      </td>
+      <td>
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="btn-edit-row" onclick="openEditExpense('${e.itemId}')">✏</button>
+          <button class="btn-edit-row" onclick="openDeleteExpense('${e.itemId}')" style="color:var(--red);border-color:#fca5a5" title="Delete">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const filteredTotal = rows.reduce((s, e) => s + e.amount, 0);
+  document.getElementById('log-totals').innerHTML =
+    `Showing ${rows.length} expense${rows.length !== 1 ? 's' : ''} &nbsp;·&nbsp; <strong>Filtered Total: ${fmtCurrency(filteredTotal)}</strong>`;
+}
+
+// ── Toggle Billed / Processed ─────────────────────────────
+async function toggleFlag(itemId, field, value) {
+  try {
+    await graph(
+      `/sites/${siteId}/lists/${encodeURIComponent(CONFIG.expenseListName)}/items/${itemId}`,
+      { method: 'PATCH', body: JSON.stringify({ fields: { [field]: value } }) }
+    );
+    // Optimistic update in memory
+    const exp = expenses.find(e => e.itemId === itemId);
+    if (exp) {
+      if (field === 'IsBilled')    exp.isBilled    = value;
+      if (field === 'IsProcessed') exp.isProcessed = value;
+    }
+    renderLog();
+    renderSummary();
+    toast(value ? `Marked as ${field === 'IsBilled' ? 'billed' : 'processed'}` : `Unmarked`, 'success');
+  } catch (err) {
+    toast('Error updating: ' + err.message, 'error');
+  }
+}
+
+// ── Open Expense Modal ─────────────────────────────────────
+function openExpenseModal() {
+  editingItemId = null;
+  document.getElementById('expense-modal-title').textContent = 'Log an Expense';
+  document.getElementById('expense-save-btn').textContent    = '💾 Submit Expense';
+
+  // Pre-fill name with signed-in user
+  document.getElementById('exp-name').value    = currentUser.name;
+  document.getElementById('exp-date').value    = todayISO();
+  document.getElementById('exp-type').value    = '';
+  document.getElementById('exp-desc').value    = '';
+  document.getElementById('exp-miles').value   = '';
+  document.getElementById('exp-rate').value    = DEFAULT_IRS_RATE;
+  document.getElementById('exp-amount').value  = '';
+  document.getElementById('exp-billable').value = '';
+  document.getElementById('exp-project').value = '';
+  document.getElementById('exp-notes').value   = '';
+  document.getElementById('mileage-fields').style.display = 'none';
+  document.getElementById('amount-fields').style.display  = 'none';
+  document.getElementById('project-code-group').style.display = 'none';
+  document.getElementById('mileage-calc-preview').style.display = 'none';
+
+  openModal('expense-modal');
+  setTimeout(() => document.getElementById('exp-name').focus(), 60);
+}
+
+function openEditExpense(itemId) {
+  const e = expenses.find(x => x.itemId === itemId);
+  if (!e) return;
+  editingItemId = itemId;
+  document.getElementById('expense-modal-title').textContent = 'Edit Expense';
+  document.getElementById('expense-save-btn').textContent    = '✓ Save Changes';
+
+  document.getElementById('exp-name').value     = e.employeeName;
+  document.getElementById('exp-date').value     = e.expenseDate;
+  document.getElementById('exp-type').value     = e.expenseType;
+  document.getElementById('exp-desc').value     = e.description;
+  document.getElementById('exp-miles').value    = e.miles  || '';
+  document.getElementById('exp-rate').value     = e.rate   || DEFAULT_IRS_RATE;
+  document.getElementById('exp-amount').value   = e.expenseType !== 'Mileage' ? e.amount : '';
+  document.getElementById('exp-billable').value = e.billable;
+  document.getElementById('exp-project').value  = e.projectCode;
+  document.getElementById('exp-notes').value    = e.notes;
+
+  onTypeChange();
+  onBillableChange();
+  if (e.expenseType === 'Mileage') calcMileage();
+
+  openModal('expense-modal');
+}
+
+// ── Form field logic ──────────────────────────────────────
+function onTypeChange() {
+  const type = document.getElementById('exp-type').value;
+  document.getElementById('mileage-fields').style.display = type === 'Mileage' ? 'block' : 'none';
+  document.getElementById('amount-fields').style.display  = (type === 'Per Diem' || type === 'Out of Pocket') ? 'block' : 'none';
+  if (type === 'Per Diem') {
+    document.getElementById('amount-label').textContent = 'Per Diem Amount ($) *';
+  } else {
+    document.getElementById('amount-label').textContent = 'Amount ($) *';
+  }
+  if (type === 'Mileage') calcMileage();
+}
+
+function onBillableChange() {
+  const val = document.getElementById('exp-billable').value;
+  document.getElementById('project-code-group').style.display = val === 'Billable' ? 'block' : 'none';
+}
+
+function calcMileage() {
+  const miles = parseFloat(document.getElementById('exp-miles').value) || 0;
+  const rate  = parseFloat(document.getElementById('exp-rate').value)  || DEFAULT_IRS_RATE;
+  const total = miles * rate;
+  const preview = document.getElementById('mileage-calc-preview');
+  if (miles > 0) {
+    preview.style.display = 'block';
+    preview.textContent   = `Reimbursement: ${fmtCurrency(total)}  (${miles} mi × $${rate.toFixed(3)}/mi)`;
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+// ── Save Expense ──────────────────────────────────────────
+async function saveExpense() {
+  const name     = document.getElementById('exp-name').value.trim();
+  const date     = document.getElementById('exp-date').value;
+  const type     = document.getElementById('exp-type').value;
+  const desc     = document.getElementById('exp-desc').value.trim();
+  const billable = document.getElementById('exp-billable').value;
+  const project  = document.getElementById('exp-project').value.trim();
+  const notes    = document.getElementById('exp-notes').value.trim();
+
+  if (!name)    { shakeInput('exp-name');    return; }
+  if (!date)    { shakeInput('exp-date');    return; }
+  if (!type)    { shakeInput('exp-type');    return; }
+  if (!desc)    { shakeInput('exp-desc');    return; }
+  if (!billable){ shakeInput('exp-billable');return; }
+  if (billable === 'Billable' && !project) { shakeInput('exp-project'); return; }
+
+  let amount = 0;
+  let miles  = 0;
+  let rate   = DEFAULT_IRS_RATE;
+
+  if (type === 'Mileage') {
+    miles  = parseFloat(document.getElementById('exp-miles').value) || 0;
+    rate   = parseFloat(document.getElementById('exp-rate').value)  || DEFAULT_IRS_RATE;
+    if (miles <= 0) { shakeInput('exp-miles'); return; }
+    amount = parseFloat((miles * rate).toFixed(2));
+  } else {
+    amount = parseFloat(document.getElementById('exp-amount').value) || 0;
+    if (amount <= 0) { shakeInput('exp-amount'); return; }
+  }
+
+  if (isSaving) return;
+  isSaving = true;
+  const btn = document.getElementById('expense-save-btn');
+  const origText = btn.textContent;
+  btn.disabled    = true;
+  btn.textContent = 'Saving…';
+
+  try {
+    const fields = {
+      Title:         `exp-${Date.now()}`,
+      EmployeeName:  name,
+      EmployeeEmail: currentUser.email,
+      ExpenseDate:   date,
+      ExpenseType:   type,
+      Description:   desc,
+      Miles:         miles,
+      Rate:          rate,
+      Amount:        amount,
+      Billable:      billable,
+      ProjectCode:   project,
+      Notes:         notes,
+      SubmittedAt:   Date.now()
+    };
+
+    if (editingItemId) {
+      await graph(
+        `/sites/${siteId}/lists/${encodeURIComponent(CONFIG.expenseListName)}/items/${editingItemId}`,
+        { method: 'PATCH', body: JSON.stringify({ fields }) }
+      );
+      toast('Expense updated', 'success');
+    } else {
+      fields.IsBilled   = false;
+      fields.IsProcessed = false;
+      await graph(
+        `/sites/${siteId}/lists/${encodeURIComponent(CONFIG.expenseListName)}/items`,
+        { method: 'POST', body: JSON.stringify({ fields }) }
+      );
+      toast(`Expense submitted: ${fmtCurrency(amount)}`, 'success');
+    }
+
+    closeModal('expense-modal');
+    await refreshData();
+  } catch (e) {
+    toast('Error saving expense: ' + e.message, 'error');
+  } finally {
+    isSaving        = false;
+    btn.disabled    = false;
+    btn.textContent = origText;
+  }
+}
+
+// ── Delete Expense ────────────────────────────────────────
+function openDeleteExpense(itemId) {
+  const e = expenses.find(x => x.itemId === itemId);
+  if (!e) return;
+  deleteItemId = itemId;
+  document.getElementById('delete-modal-msg').innerHTML =
+    `Delete <strong>${escHtml(e.description)}</strong> submitted by <strong>${escHtml(e.employeeName)}</strong> on ${fmtDate(e.expenseDate)} for ${fmtCurrency(e.amount)}? This cannot be undone.`;
+  openModal('delete-modal');
+}
+
+async function confirmDelete() {
+  try {
+    await graph(
+      `/sites/${siteId}/lists/${encodeURIComponent(CONFIG.expenseListName)}/items/${deleteItemId}`,
+      { method: 'DELETE' }
+    );
+    closeModal('delete-modal');
+    toast('Expense deleted', 'error');
+    await refreshData();
+  } catch (e) {
+    toast('Error deleting: ' + e.message, 'error');
+  }
+}
+
+// ── Modal helpers ─────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el =>
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); })
+);
+
+// ── Tabs ──────────────────────────────────────────────────
+const TABS = ['portal', 'log'];
+function showTab(tab) {
+  TABS.forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = tab === t ? 'block' : 'none';
+    document.getElementById(`nav-${t}`).classList.toggle('active', tab === t);
+  });
+  if (tab === 'log') renderLog();
+  history.replaceState(null, '', '#' + tab);
+}
+
+// ── Screen helpers ─────────────────────────────────────────
+function showSignIn()  {
+  document.getElementById('signin-screen').style.display  = 'flex';
+  document.getElementById('loading-screen').style.display = 'none';
+}
+function showLoading(msg) {
+  document.getElementById('signin-screen').style.display  = 'none';
+  document.getElementById('loading-screen').style.display = 'flex';
+  document.getElementById('loading-msg').textContent      = msg || 'Loading…';
+}
+function hideScreens() {
+  document.getElementById('signin-screen').style.display  = 'none';
+  document.getElementById('loading-screen').style.display = 'none';
+}
+
+// ── Polling ───────────────────────────────────────────────
+function startPolling() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(() => refreshData(), CONFIG.pollInterval);
+}
+
+// ── Clock ─────────────────────────────────────────────────
+function startClock() {
+  function tick() {
+    const now = new Date();
+    document.getElementById('live-clock').textContent =
+      now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    document.getElementById('header-date').textContent =
+      now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ── Utilities ─────────────────────────────────────────────
+function todayISO() { return new Date().toISOString().split('T')[0]; }
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return new Date(+y, +m - 1, +d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function fmtCurrency(n) {
+  return '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function typeClass(type) {
+  if (type === 'Mileage')      return 'type-mileage';
+  if (type === 'Per Diem')     return 'type-perdiem';
+  if (type === 'Out of Pocket') return 'type-oop';
+  return '';
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function shakeInput(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('shake');
+  void el.offsetWidth;
+  el.classList.add('shake');
+  el.focus();
+  el.addEventListener('animationend', () => el.classList.remove('shake'), { once: true });
+}
+
+let toastTimer;
+function toast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3500);
+}
+
+// ── Deep link via hash ─────────────────────────────────────
+(function() {
+  const hash = window.location.hash.replace('#', '');
+  if (hash === 'log') window._initialTab = 'log';
+})();
+
+// ── Boot ──────────────────────────────────────────────────
+window.addEventListener('load', initMsal);
+</script>
+</body>
+</html>
