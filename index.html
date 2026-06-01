@@ -154,8 +154,19 @@
     .toggle-btn.on.billed    { background: var(--green-bg); color: #16a34a; border-color: #86efac; }
     .toggle-btn.on.processed { background: var(--purple-bg); color: #7c3aed; border-color: #c4b5fd; }
 
-    .btn-edit-row { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--muted); transition: all .15s; }
-    .btn-edit-row:hover { background: var(--bg); color: var(--text); border-color: var(--brand-light); }
+    .btn-edit-row {
+      display: inline-flex; align-items: center; gap: 5px;
+      border-radius: 7px; padding: 5px 12px; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .btn-edit-row.edit {
+      background: var(--bg); color: var(--brand); border: 1px solid var(--border);
+    }
+    .btn-edit-row.edit:hover { background: var(--blue-bg); color: var(--blue); border-color: #93c5fd; }
+    .btn-edit-row.delete {
+      background: var(--red-bg); color: var(--red); border: 1px solid #fca5a5;
+    }
+    .btn-edit-row.delete:hover { background: var(--red); color: #fff; border-color: var(--red); }
 
     /* ── Dashboard ── */
     .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 24px; }
@@ -794,8 +805,14 @@ function renderLog() {
       </td>
       <td>
         <div style="display:flex;gap:4px">
-          <button class="btn-edit-row" onclick="openEditExpense('${e.itemId}')">✏</button>
-          <button class="btn-edit-row" onclick="openDeleteExpense('${e.itemId}')" style="color:var(--red);border-color:#fca5a5">🗑</button>
+          <button class="btn-edit-row edit" onclick="openEditExpense('${e.itemId}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit
+          </button>
+          <button class="btn-edit-row delete" onclick="openDeleteExpense('${e.itemId}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            Delete
+          </button>
         </div>
       </td>
     </tr>`;
