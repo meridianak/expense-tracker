@@ -550,8 +550,21 @@
         <input type="text" id="exp-name" placeholder="e.g. John Smith" autocomplete="off" />
       </div>
       <div class="form-group">
-        <label>Date *</label>
-        <input type="date" id="exp-date" />
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <label style="margin-bottom:0">Date *</label>
+          <span style="display:flex;gap:12px;font-size:12px;font-weight:600;color:var(--text)">
+            <label style="cursor:pointer;display:flex;align-items:center;gap:4px"><input type="radio" name="date-mode" id="date-mode-single" value="single" checked onchange="onDateModeChange()"> Single</label>
+            <label style="cursor:pointer;display:flex;align-items:center;gap:4px"><input type="radio" name="date-mode" id="date-mode-range" value="range" onchange="onDateModeChange()"> Range</label>
+          </span>
+        </div>
+        <div id="date-single-wrap">
+          <input type="date" id="exp-date" style="width:100%" />
+        </div>
+        <div id="date-range-wrap" style="display:none;gap:8px;align-items:center">
+          <input type="date" id="exp-date-from" style="flex:1" />
+          <span style="font-size:12px;color:var(--muted);white-space:nowrap">to</span>
+          <input type="date" id="exp-date-to" style="flex:1" />
+        </div>
       </div>
     </div>
     <div class="form-group">
@@ -579,6 +592,29 @@
         </div>
       </div>
       <div id="mileage-calc-preview">Reimbursement: $0.00</div>
+    </div>
+    <div id="perdiem-fields" style="display:none;">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Meals Amount ($) *</label>
+          <input type="number" id="exp-meals-amt" placeholder="0.00" min="0" step="0.01" oninput="calcPerDiem()" />
+        </div>
+        <div class="form-group">
+          <label>Meals Description <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+          <input type="text" id="exp-meals-desc" placeholder="e.g. Breakfast, lunch, dinner" autocomplete="off" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Incidentals Amount ($) <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+          <input type="number" id="exp-incidentals-amt" placeholder="0.00" min="0" step="0.01" oninput="calcPerDiem()" />
+        </div>
+        <div class="form-group">
+          <label>Incidentals Description <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+          <input type="text" id="exp-incidentals-desc" placeholder="e.g. Tips, laundry" autocomplete="off" />
+        </div>
+      </div>
+      <div id="perdiem-total-preview" style="display:none;background:var(--amber-bg);border-radius:8px;padding:10px 14px;font-size:13px;font-weight:600;color:#92400e;margin-top:2px;margin-bottom:16px"></div>
     </div>
     <div id="amount-fields" style="display:none;">
       <div class="form-group">
@@ -737,6 +773,15 @@ async function refreshData() {
     );
     expenses = (res.value || []).map(item => {
       const f = item.fields;
+      const rawNotes = f.Notes || '';
+      let perDiem = null, notes = rawNotes;
+      if (rawNotes.startsWith('__pd__')) {
+        const rest = rawNotes.slice(6);
+        const sep  = rest.indexOf('||');
+        const jsonStr = sep >= 0 ? rest.slice(0, sep) : rest;
+        notes = sep >= 0 ? rest.slice(sep + 2) : '';
+        try { perDiem = JSON.parse(jsonStr); } catch(e) {}
+      }
       return {
         itemId:       item.id,
         employeeName: f.EmployeeName  || '',
@@ -749,7 +794,8 @@ async function refreshData() {
         amount:       f.Amount       || 0,
         billable:     f.Billable     || '',
         projectCode:  f.ProjectCode  || '',
-        notes:        f.Notes        || '',
+        notes,
+        perDiem,
         isBilled:     !!f.IsBilled,
         isProcessed:  !!f.IsProcessed,
         submittedAt:  f.SubmittedAt  || 0
@@ -878,8 +924,8 @@ function getFilteredExpenses() {
     if (statusF === 'processed'   && !e.isProcessed) return false;
     if (statusF === 'unprocessed' && e.isProcessed)  return false;
     if (statusF === 'billed'      && !e.isBilled)    return false;
-    if (dateFrom && e.expenseDate < dateFrom)   return false;
-    if (dateTo   && e.expenseDate > dateTo)     return false;
+    if (dateFrom && expStartDate(e) < dateFrom)  return false;
+    if (dateTo   && expStartDate(e) > dateTo)   return false;
     if (search) {
       const hay = `${e.employeeName} ${e.description} ${e.projectCode} ${e.notes}`.toLowerCase();
       if (!hay.includes(search)) return false;
@@ -920,7 +966,7 @@ function renderLog() {
                            e.billable === 'Not Billable' ? 'NON-BILLABLE' : 'UNSURE';
     return `
     <tr>
-      <td style="white-space:nowrap;color:var(--muted);font-size:12px">${e.expenseDate}</td>
+      <td style="white-space:nowrap;color:var(--muted);font-size:12px">${fmtDate(e.expenseDate)}</td>
       <td>
         <strong>${escHtml(e.employeeName)}</strong>
         ${e.email ? `<div style="font-size:10px;color:var(--muted)">${escHtml(e.email)}</div>` : ''}
@@ -928,8 +974,13 @@ function renderLog() {
       <td><span class="recent-type-pill ${typeClass(e.expenseType)}">${escHtml(e.expenseType)}</span></td>
       <td>
         <span style="font-weight:600">${escHtml(e.description)}</span>
-        ${e.notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(e.notes)}</div>` : ''}
+        ${e.expenseType === 'Per Diem' && e.perDiem ? `
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap">
+            <span>🍽 Meals: <strong>${fmtCurrency(e.perDiem.mealsAmt||0)}</strong>${e.perDiem.mealsDesc ? ' — ' + escHtml(e.perDiem.mealsDesc) : ''}</span>
+            <span>📋 Incidentals: <strong>${fmtCurrency(e.perDiem.incidentalsAmt||0)}</strong>${e.perDiem.incidentalsDesc ? ' — ' + escHtml(e.perDiem.incidentalsDesc) : ''}</span>
+          </div>` : ''}
         ${e.expenseType === 'Mileage' ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${e.miles} mi @ $${e.rate}/mi</div>` : ''}
+        ${e.notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(e.notes)}</div>` : ''}
       </td>
       <td><span class="billable-label ${billLabelClass}">${billLabelText}</span></td>
       <td style="font-size:12px;color:var(--muted);font-weight:600">${e.projectCode ? escHtml(e.projectCode) : '—'}</td>
@@ -1329,20 +1380,32 @@ function openExpenseModal() {
   editingItemId = null;
   document.getElementById('expense-modal-title').textContent = 'Log an Expense';
   document.getElementById('expense-save-btn').textContent    = '💾 Submit Expense';
-  document.getElementById('exp-name').value     = currentUser.name;
-  document.getElementById('exp-date').value     = todayISO();
-  document.getElementById('exp-type').value     = '';
-  document.getElementById('exp-desc').value     = '';
-  document.getElementById('exp-miles').value    = '';
-  document.getElementById('exp-rate').value     = DEFAULT_IRS_RATE;
-  document.getElementById('exp-amount').value   = '';
-  document.getElementById('exp-billable').value = '';
-  document.getElementById('exp-project').value  = '';
-  document.getElementById('exp-notes').value    = '';
-  document.getElementById('mileage-fields').style.display    = 'none';
-  document.getElementById('amount-fields').style.display     = 'none';
+  document.getElementById('exp-name').value          = currentUser.name;
+  document.getElementById('exp-date').value          = todayISO();
+  document.getElementById('exp-date-from').value     = '';
+  document.getElementById('exp-date-to').value       = '';
+  document.getElementById('exp-type').value          = '';
+  document.getElementById('exp-desc').value          = '';
+  document.getElementById('exp-miles').value         = '';
+  document.getElementById('exp-rate').value          = DEFAULT_IRS_RATE;
+  document.getElementById('exp-amount').value        = '';
+  document.getElementById('exp-meals-amt').value     = '';
+  document.getElementById('exp-meals-desc').value    = '';
+  document.getElementById('exp-incidentals-amt').value  = '';
+  document.getElementById('exp-incidentals-desc').value = '';
+  document.getElementById('exp-billable').value      = '';
+  document.getElementById('exp-project').value       = '';
+  document.getElementById('exp-notes').value         = '';
+  document.getElementById('mileage-fields').style.display     = 'none';
+  document.getElementById('perdiem-fields').style.display     = 'none';
+  document.getElementById('amount-fields').style.display      = 'none';
   document.getElementById('project-code-group').style.display = 'none';
-  document.getElementById('mileage-calc-preview').style.display = 'none';
+  document.getElementById('mileage-calc-preview').style.display  = 'none';
+  document.getElementById('perdiem-total-preview').style.display = 'none';
+  // Reset date mode to single
+  document.getElementById('date-mode-single').checked = true;
+  document.getElementById('date-single-wrap').style.display = 'block';
+  document.getElementById('date-range-wrap').style.display  = 'none';
   openModal('expense-modal');
   setTimeout(() => document.getElementById('exp-name').focus(), 60);
 }
@@ -1354,15 +1417,48 @@ function openEditExpense(itemId) {
   document.getElementById('expense-modal-title').textContent = 'Edit Expense';
   document.getElementById('expense-save-btn').textContent    = '✓ Save Changes';
   document.getElementById('exp-name').value     = e.employeeName;
-  document.getElementById('exp-date').value     = e.expenseDate;
   document.getElementById('exp-type').value     = e.expenseType;
   document.getElementById('exp-desc').value     = e.description;
   document.getElementById('exp-miles').value    = e.miles  || '';
   document.getElementById('exp-rate').value     = e.rate   || DEFAULT_IRS_RATE;
-  document.getElementById('exp-amount').value   = e.expenseType !== 'Mileage' ? e.amount : '';
+  document.getElementById('exp-amount').value   = e.expenseType === 'Out of Pocket' ? e.amount : '';
   document.getElementById('exp-billable').value = e.billable;
   document.getElementById('exp-project').value  = e.projectCode;
   document.getElementById('exp-notes').value    = e.notes;
+
+  // Restore date (single vs range)
+  if (e.expenseDate && e.expenseDate.includes('/')) {
+    const [from, to] = e.expenseDate.split('/');
+    document.getElementById('date-mode-range').checked  = true;
+    document.getElementById('date-mode-single').checked = false;
+    document.getElementById('date-single-wrap').style.display = 'none';
+    document.getElementById('date-range-wrap').style.display  = 'flex';
+    document.getElementById('exp-date-from').value = from;
+    document.getElementById('exp-date-to').value   = to;
+    document.getElementById('exp-date').value      = '';
+  } else {
+    document.getElementById('date-mode-single').checked = true;
+    document.getElementById('date-mode-range').checked  = false;
+    document.getElementById('date-single-wrap').style.display = 'block';
+    document.getElementById('date-range-wrap').style.display  = 'none';
+    document.getElementById('exp-date').value      = e.expenseDate;
+    document.getElementById('exp-date-from').value = '';
+    document.getElementById('exp-date-to').value   = '';
+  }
+
+  // Restore per diem fields
+  if (e.expenseType === 'Per Diem' && e.perDiem) {
+    document.getElementById('exp-meals-amt').value        = e.perDiem.mealsAmt        || '';
+    document.getElementById('exp-meals-desc').value       = e.perDiem.mealsDesc       || '';
+    document.getElementById('exp-incidentals-amt').value  = e.perDiem.incidentalsAmt  || '';
+    document.getElementById('exp-incidentals-desc').value = e.perDiem.incidentalsDesc || '';
+  } else {
+    document.getElementById('exp-meals-amt').value        = '';
+    document.getElementById('exp-meals-desc').value       = '';
+    document.getElementById('exp-incidentals-amt').value  = '';
+    document.getElementById('exp-incidentals-desc').value = '';
+  }
+
   onTypeChange();
   onBillableChange();
   if (e.expenseType === 'Mileage') calcMileage();
@@ -1371,10 +1467,30 @@ function openEditExpense(itemId) {
 
 function onTypeChange() {
   const type = document.getElementById('exp-type').value;
-  document.getElementById('mileage-fields').style.display = type === 'Mileage' ? 'block' : 'none';
-  document.getElementById('amount-fields').style.display  = (type === 'Per Diem' || type === 'Out of Pocket') ? 'block' : 'none';
-  document.getElementById('amount-label').textContent     = type === 'Per Diem' ? 'Per Diem Amount ($) *' : 'Amount ($) *';
-  if (type === 'Mileage') calcMileage();
+  document.getElementById('mileage-fields').style.display  = type === 'Mileage'       ? 'block' : 'none';
+  document.getElementById('perdiem-fields').style.display  = type === 'Per Diem'      ? 'block' : 'none';
+  document.getElementById('amount-fields').style.display   = type === 'Out of Pocket' ? 'block' : 'none';
+  if (type === 'Mileage')  calcMileage();
+  if (type === 'Per Diem') calcPerDiem();
+}
+
+function calcPerDiem() {
+  const meals       = parseFloat(document.getElementById('exp-meals-amt').value)       || 0;
+  const incidentals = parseFloat(document.getElementById('exp-incidentals-amt').value) || 0;
+  const total   = meals + incidentals;
+  const preview = document.getElementById('perdiem-total-preview');
+  if (meals > 0 || incidentals > 0) {
+    preview.style.display = 'block';
+    preview.textContent   = `Total Per Diem: ${fmtCurrency(total)}  (Meals ${fmtCurrency(meals)} + Incidentals ${fmtCurrency(incidentals)})`;
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+function onDateModeChange() {
+  const isRange = document.getElementById('date-mode-range').checked;
+  document.getElementById('date-single-wrap').style.display = isRange ? 'none'  : 'block';
+  document.getElementById('date-range-wrap').style.display  = isRange ? 'flex'  : 'none';
 }
 
 function onBillableChange() {
@@ -1394,26 +1510,49 @@ function calcMileage() {
 
 async function saveExpense() {
   const name     = document.getElementById('exp-name').value.trim();
-  const date     = document.getElementById('exp-date').value;
   const type     = document.getElementById('exp-type').value;
   const desc     = document.getElementById('exp-desc').value.trim();
   const billable = document.getElementById('exp-billable').value;
   const project  = document.getElementById('exp-project').value.trim();
-  const notes    = document.getElementById('exp-notes').value.trim();
+  const userNotes = document.getElementById('exp-notes').value.trim();
+
+  // Collect date (single or range)
+  const isRange = document.getElementById('date-mode-range').checked;
+  let expenseDate;
+  if (isRange) {
+    const from = document.getElementById('exp-date-from').value;
+    const to   = document.getElementById('exp-date-to').value;
+    if (!from) { shakeInput('exp-date-from'); return; }
+    if (!to)   { shakeInput('exp-date-to');   return; }
+    if (to < from) { shakeInput('exp-date-to'); toast('End date must be on or after start date', 'error'); return; }
+    expenseDate = `${from}/${to}`;
+  } else {
+    expenseDate = document.getElementById('exp-date').value;
+    if (!expenseDate) { shakeInput('exp-date'); return; }
+  }
 
   if (!name)     { shakeInput('exp-name');    return; }
-  if (!date)     { shakeInput('exp-date');    return; }
   if (!type)     { shakeInput('exp-type');    return; }
   if (!desc)     { shakeInput('exp-desc');    return; }
   if (!billable) { shakeInput('exp-billable');return; }
   if (billable === 'Billable' && !project) { shakeInput('exp-project'); return; }
 
-  let amount = 0, miles = 0, rate = DEFAULT_IRS_RATE;
+  let amount = 0, miles = 0, rate = DEFAULT_IRS_RATE, notesField = userNotes;
+
   if (type === 'Mileage') {
     miles  = parseFloat(document.getElementById('exp-miles').value) || 0;
     rate   = parseFloat(document.getElementById('exp-rate').value)  || DEFAULT_IRS_RATE;
     if (miles <= 0) { shakeInput('exp-miles'); return; }
     amount = parseFloat((miles * rate).toFixed(2));
+  } else if (type === 'Per Diem') {
+    const mealsAmt        = parseFloat(document.getElementById('exp-meals-amt').value)       || 0;
+    const incidentalsAmt  = parseFloat(document.getElementById('exp-incidentals-amt').value) || 0;
+    if (mealsAmt <= 0 && incidentalsAmt <= 0) { shakeInput('exp-meals-amt'); return; }
+    amount = parseFloat((mealsAmt + incidentalsAmt).toFixed(2));
+    const mealsDesc       = document.getElementById('exp-meals-desc').value.trim();
+    const incidentalsDesc = document.getElementById('exp-incidentals-desc').value.trim();
+    const pdData = JSON.stringify({ mealsAmt, mealsDesc, incidentalsAmt, incidentalsDesc });
+    notesField = `__pd__${pdData}${userNotes ? '||' + userNotes : ''}`;
   } else {
     amount = parseFloat(document.getElementById('exp-amount').value) || 0;
     if (amount <= 0) { shakeInput('exp-amount'); return; }
@@ -1428,8 +1567,8 @@ async function saveExpense() {
   try {
     const fields = {
       Title: `exp-${Date.now()}`, EmployeeName: name, EmployeeEmail: currentUser.email,
-      ExpenseDate: date, ExpenseType: type, Description: desc, Miles: miles, Rate: rate,
-      Amount: amount, Billable: billable, ProjectCode: project, Notes: notes, SubmittedAt: Date.now()
+      ExpenseDate: expenseDate, ExpenseType: type, Description: desc, Miles: miles, Rate: rate,
+      Amount: amount, Billable: billable, ProjectCode: project, Notes: notesField, SubmittedAt: Date.now()
     };
     if (editingItemId) {
       await graph(`/sites/${siteId}/lists/${encodeURIComponent(CONFIG.expenseListName)}/items/${editingItemId}`,
@@ -1516,10 +1655,21 @@ function startClock() {
 
 // ── Utilities ─────────────────────────────────────────────
 function todayISO() { return new Date().toISOString().split('T')[0]; }
-function fmtDate(iso) {
+function fmtSingleDate(iso) {
   if (!iso) return '—';
   const [y,m,d] = iso.split('-');
   return new Date(+y,+m-1,+d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  if (iso.includes('/')) {
+    const [from, to] = iso.split('/');
+    return `${fmtSingleDate(from)} – ${fmtSingleDate(to)}`;
+  }
+  return fmtSingleDate(iso);
+}
+function expStartDate(e) {
+  return e.expenseDate.includes('/') ? e.expenseDate.split('/')[0] : e.expenseDate;
 }
 function fmtCurrency(n) { return '$' + (n||0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function typeClass(t) { return t==='Mileage'?'type-mileage':t==='Per Diem'?'type-perdiem':t==='Out of Pocket'?'type-oop':''; }
