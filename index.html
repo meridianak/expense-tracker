@@ -305,6 +305,34 @@
     @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 60%{transform:translateX(6px)} }
     .shake { animation: shake .3s ease; border-color: var(--red) !important; }
 
+    /* ── Per Diem toggles ── */
+    .pd-toggle {
+      flex: 1; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all .15s; border: 1.5px solid var(--border);
+      background: var(--bg); color: var(--muted);
+    }
+    .pd-toggle.active { background: var(--amber-bg); color: #92400e; border-color: #fcd34d; }
+    .pd-toggle:hover  { border-color: var(--accent); }
+
+    /* ── Locations tab ── */
+    .loc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .loc-header h2 { font-size: 18px; font-weight: 800; color: var(--brand); }
+    .btn-add-loc {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--brand); color: #fff; border: none; border-radius: 8px;
+      padding: 9px 18px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s;
+    }
+    .btn-add-loc:hover { background: var(--brand-light); }
+    .loc-table-wrap { border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+    .loc-table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 13px; }
+    .loc-table thead th { background: var(--brand); color: #fff; padding: 11px 16px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; }
+    .loc-table tbody tr { border-bottom: 1px solid var(--border); }
+    .loc-table tbody tr:last-child { border-bottom: none; }
+    .loc-table tbody tr:hover { background: #f8fafc; }
+    .loc-table tbody td { padding: 12px 16px; vertical-align: middle; }
+    .loc-name { font-weight: 700; color: var(--brand); }
+    .loc-rate { font-weight: 700; font-size: 15px; }
+
     /* ── App Switcher ── */
     .apps-btn {
       background: rgba(255,255,255,.12); border: none; border-radius: 8px;
@@ -422,7 +450,7 @@
 <nav>
   <button class="active" onclick="showTab('portal')"    id="nav-portal">💳 Log Expense</button>
   <button onclick="showTab('log')" id="nav-log">📋 Expense Log<span class="nav-badge" id="nav-badge" style="display:none">0</span></button>
-  <button onclick="showTab('dashboard')" id="nav-dashboard">📊 Dashboard</button>
+  <button onclick="showTab('locations')" id="nav-locations">📍 Per Diem Locations</button>
 </nav>
 
 <!-- MAIN -->
@@ -521,7 +549,7 @@
             <th onclick="sortBy('type')"    id="th-type">Type</th>
             <th class="no-sort">Description</th>
             <th onclick="sortBy('billable')" id="th-billable">Billing</th>
-            <th onclick="sortBy('project')" id="th-project">Project Code</th>
+            <th onclick="sortBy('project')" id="th-project">Project Name</th>
             <th onclick="sortBy('amount')"  id="th-amount" style="text-align:right">Amount</th>
             <th class="no-sort">Billed</th>
             <th class="no-sort">Processed</th>
@@ -533,9 +561,9 @@
     </div>
   </div>
 
-  <!-- ═══ DASHBOARD TAB ═══ -->
-  <div id="tab-dashboard" style="display:none;">
-    <div id="dashboard-content"></div>
+  <!-- ═══ LOCATIONS TAB ═══ -->
+  <div id="tab-locations" style="display:none;">
+    <div id="locations-content"></div>
   </div>
 
 </main>
@@ -588,33 +616,37 @@
         </div>
         <div class="form-group">
           <label>IRS Rate ($/mile)</label>
-          <input type="number" id="exp-rate" value="0.70" step="0.001" oninput="calcMileage()" />
+          <div style="padding:10px 13px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#f8fafc;color:var(--muted);font-weight:700">$${DEFAULT_IRS_RATE.toFixed(3)}/mi</div>
+          <input type="hidden" id="exp-rate" value="${DEFAULT_IRS_RATE}" />
         </div>
       </div>
       <div id="mileage-calc-preview">Reimbursement: $0.00</div>
     </div>
     <div id="perdiem-fields" style="display:none;">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Meals Amount ($) *</label>
-          <input type="number" id="exp-meals-amt" placeholder="0.00" min="0" step="0.01" oninput="calcPerDiem()" />
-        </div>
-        <div class="form-group">
-          <label>Meals Description <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-          <input type="text" id="exp-meals-desc" placeholder="e.g. Breakfast, lunch, dinner" autocomplete="off" />
-        </div>
+      <div class="form-group">
+        <label>Per Diem Location *</label>
+        <select id="exp-pd-location" onchange="onLocationChange()">
+          <option value="">— Select location —</option>
+        </select>
+      </div>
+      <div id="pd-rates-display" style="display:none;background:var(--bg);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:12px;gap:18px">
+        <span>🍽 Meals rate: <strong id="pd-meals-rate-label">$0.00</strong>/day</span>
+        <span>📋 Incidentals rate: <strong id="pd-incidentals-rate-label">$0.00</strong>/day</span>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Incidentals Amount ($) <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-          <input type="number" id="exp-incidentals-amt" placeholder="0.00" min="0" step="0.01" oninput="calcPerDiem()" />
+          <label>Number of Days *</label>
+          <input type="number" id="exp-pd-days" placeholder="1" min="0.5" step="0.5" oninput="calcPerDiem()" />
         </div>
         <div class="form-group">
-          <label>Incidentals Description <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-          <input type="text" id="exp-incidentals-desc" placeholder="e.g. Tips, laundry" autocomplete="off" />
+          <label>Include</label>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button type="button" id="pd-toggle-meals" class="pd-toggle active" onclick="togglePdItem('meals')">🍽 Meals</button>
+            <button type="button" id="pd-toggle-incidentals" class="pd-toggle active" onclick="togglePdItem('incidentals')">📋 Incidentals</button>
+          </div>
         </div>
       </div>
-      <div id="perdiem-total-preview" style="display:none;background:var(--amber-bg);border-radius:8px;padding:10px 14px;font-size:13px;font-weight:600;color:#92400e;margin-top:2px;margin-bottom:16px"></div>
+      <div id="perdiem-total-preview" style="display:none;background:var(--amber-bg);border-radius:8px;padding:12px 16px;font-size:13px;font-weight:600;color:#92400e;margin-bottom:8px"></div>
     </div>
     <div id="amount-fields" style="display:none;">
       <div class="form-group">
@@ -632,16 +664,41 @@
       </select>
     </div>
     <div class="form-group" id="project-code-group" style="display:none;">
-      <label>Project Code *</label>
-      <input type="text" id="exp-project" placeholder="e.g. ANC-2024-07" autocomplete="off" />
+      <label>Project Name *</label>
+      <input type="text" id="exp-project" placeholder="e.g. Anchorage Site — Phase 2" autocomplete="off" />
     </div>
     <div class="form-group">
-      <label>Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <label>Notes <span style="font-weight:400;color:var(--muted)">(Client Project/ER Number?)</span></label>
       <textarea id="exp-notes" rows="2" placeholder="Any additional details…"></textarea>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('expense-modal')">Cancel</button>
       <button class="btn-confirm" id="expense-save-btn" onclick="saveExpense()">💾 Submit Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOCATION MODAL -->
+<div class="modal-overlay" id="location-modal">
+  <div class="modal" style="width:400px;">
+    <h3 id="location-modal-title">Add Per Diem Location</h3>
+    <div class="form-group">
+      <label>Location Name *</label>
+      <input type="text" id="loc-name" placeholder="e.g. Anchorage, Fairbanks, Remote Site A" autocomplete="off" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Meals Rate ($/day) *</label>
+        <input type="number" id="loc-meals-rate" placeholder="0.00" min="0" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label>Incidentals Rate ($/day) *</label>
+        <input type="number" id="loc-incidentals-rate" placeholder="0.00" min="0" step="0.01" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('location-modal')">Cancel</button>
+      <button class="btn-confirm" id="location-save-btn" onclick="saveLocation()">💾 Save Location</button>
     </div>
   </div>
 </div>
@@ -665,25 +722,28 @@
 //  CONFIG
 // ════════════════════════════════════
 const CONFIG = {
-  clientId:        "ff1fd3ee-7baf-4d72-b978-742a29de8eab",
-  tenantId:        "4fa4840a-2a70-49e0-93ab-fd8b099bbeed",
-  siteHostname:    "meridianak.sharepoint.com",
-  expenseListName: "ExpenseLog",
-  pollInterval:    60000
+  clientId:           "ff1fd3ee-7baf-4d72-b978-742a29de8eab",
+  tenantId:           "4fa4840a-2a70-49e0-93ab-fd8b099bbeed",
+  siteHostname:       "meridianak.sharepoint.com",
+  expenseListName:    "ExpenseLog",
+  locationsListName:  "PerDiemLocations",
+  pollInterval:       60000
 };
-const DEFAULT_IRS_RATE = 0.70;
+const DEFAULT_IRS_RATE = 0.725;
 
 // ── State ──
-let msalInstance  = null;
-let siteId        = null;
-let expenses      = [];
-let currentUser   = null;
-let pollTimer     = null;
-let isSaving      = false;
-let editingItemId = null;
-let deleteItemId  = null;
-let sortField     = 'date';
-let sortDir       = 'desc'; // 'asc' | 'desc'
+let msalInstance       = null;
+let siteId             = null;
+let expenses           = [];
+let perDiemLocations   = [];
+let currentUser        = null;
+let pollTimer          = null;
+let isSaving           = false;
+let editingItemId      = null;
+let editingLocationId  = null;
+let deleteItemId       = null;
+let sortField          = 'date';
+let sortDir            = 'desc';
 
 // ── MSAL ──
 const msalConfig = {
@@ -743,6 +803,8 @@ async function startApp() {
     siteId = site.id;
     showLoading('Loading expenses…');
     await ensureExpenseList();
+    await ensureLocationsListExists();
+    await loadLocations();
     await refreshData();
     hideScreens();
     startPolling();
@@ -766,6 +828,40 @@ async function ensureExpenseList() {
   }
 }
 
+async function ensureLocationsListExists() {
+  try { await graph(`/sites/${siteId}/lists/${encodeURIComponent(CONFIG.locationsListName)}`); }
+  catch (e) {
+    throw new Error(
+      `The "PerDiemLocations" SharePoint list was not found. ` +
+      `Please create it in SharePoint with columns: Title (Text), MealsRate (Number), IncidentalsRate (Number), then reload.`
+    );
+  }
+}
+
+async function loadLocations() {
+  try {
+    const res = await graph(`/sites/${siteId}/lists/${encodeURIComponent(CONFIG.locationsListName)}/items?$expand=fields&$top=500`);
+    perDiemLocations = (res.value || []).map(item => ({
+      itemId:           item.id,
+      name:             item.fields.Title          || '',
+      mealsRate:        item.fields.MealsRate       || 0,
+      incidentalsRate:  item.fields.IncidentalsRate || 0
+    })).sort((a, b) => a.name.localeCompare(b.name));
+    populateLocationDropdown();
+    if (document.getElementById('tab-locations').style.display === 'block') renderLocations();
+  } catch (e) {
+    console.error('Could not load locations', e);
+  }
+}
+
+function populateLocationDropdown() {
+  const sel = document.getElementById('exp-pd-location');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select location —</option>' +
+    perDiemLocations.map(l => `<option value="${escHtml(l.itemId)}"${l.itemId===cur?' selected':''}>${escHtml(l.name)}</option>`).join('');
+}
+
 async function refreshData() {
   try {
     const res = await graph(
@@ -776,11 +872,11 @@ async function refreshData() {
       const rawNotes = f.Notes || '';
       let perDiem = null, notes = rawNotes;
       if (rawNotes.startsWith('__pd__')) {
-        const rest = rawNotes.slice(6);
-        const sep  = rest.indexOf('||');
+        const rest    = rawNotes.slice(6);
+        const sep     = rest.indexOf('||');
         const jsonStr = sep >= 0 ? rest.slice(0, sep) : rest;
         notes = sep >= 0 ? rest.slice(sep + 2) : '';
-        try { perDiem = JSON.parse(jsonStr); } catch(e) {}
+        try { perDiem = JSON.parse(jsonStr); } catch(_) {}
       }
       return {
         itemId:       item.id,
@@ -976,8 +1072,10 @@ function renderLog() {
         <span style="font-weight:600">${escHtml(e.description)}</span>
         ${e.expenseType === 'Per Diem' && e.perDiem ? `
           <div style="font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap">
-            <span>🍽 Meals: <strong>${fmtCurrency(e.perDiem.mealsAmt||0)}</strong>${e.perDiem.mealsDesc ? ' — ' + escHtml(e.perDiem.mealsDesc) : ''}</span>
-            <span>📋 Incidentals: <strong>${fmtCurrency(e.perDiem.incidentalsAmt||0)}</strong>${e.perDiem.incidentalsDesc ? ' — ' + escHtml(e.perDiem.incidentalsDesc) : ''}</span>
+            ${e.perDiem.locationName ? `<span>📍 ${escHtml(e.perDiem.locationName)}</span>` : ''}
+            ${e.perDiem.days         ? `<span>${e.perDiem.days} day${e.perDiem.days !== 1 ? 's' : ''}</span>` : ''}
+            ${e.perDiem.includeMeals       ? `<span>🍽 Meals: ${fmtCurrency((e.perDiem.mealsRate||0)*e.perDiem.days)}</span>` : ''}
+            ${e.perDiem.includeIncidentals ? `<span>📋 Incidentals: ${fmtCurrency((e.perDiem.incidentalsRate||0)*e.perDiem.days)}</span>` : ''}
           </div>` : ''}
         ${e.expenseType === 'Mileage' ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${e.miles} mi @ $${e.rate}/mi</div>` : ''}
         ${e.notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(e.notes)}</div>` : ''}
@@ -1130,7 +1228,7 @@ function exportToExcel() {
   if (rows.length === 0) { toast('No data to export', 'error'); return; }
 
   const wsData = [
-    ['Date', 'Employee', 'Email', 'Type', 'Description', 'Miles', 'Rate', 'Amount', 'Billable', 'Project Code', 'Notes', 'Billed', 'Processed']
+    ['Date', 'Employee', 'Email', 'Type', 'Description', 'Miles', 'Rate', 'Amount', 'Billable', 'Project Name', 'Notes', 'Billed', 'Processed']
   ];
   rows.forEach(e => wsData.push([
     e.expenseDate, e.employeeName, e.email, e.expenseType, e.description,
@@ -1174,7 +1272,118 @@ async function toggleFlag(itemId, field, value) {
   }
 }
 
-// ── Dashboard ─────────────────────────────────────────────
+// ── Per Diem Locations ────────────────────────────────────
+function renderLocations() {
+  const el = document.getElementById('locations-content');
+  const rows = perDiemLocations.length === 0
+    ? `<tr><td colspan="4" class="empty-state">No locations yet. Click "Add Location" to get started.</td></tr>`
+    : perDiemLocations.map(l => `
+      <tr>
+        <td class="loc-name">${escHtml(l.name)}</td>
+        <td class="loc-rate" style="color:var(--brand)">${fmtCurrency(l.mealsRate)}</td>
+        <td class="loc-rate" style="color:var(--brand-light)">${fmtCurrency(l.incidentalsRate)}</td>
+        <td class="loc-rate" style="color:var(--accent)">${fmtCurrency(l.mealsRate + l.incidentalsRate)}</td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <button class="btn-edit-row edit" onclick="openEditLocation('${l.itemId}')">Edit</button>
+            <button class="btn-edit-row delete" onclick="deleteLocation('${l.itemId}')" title="Delete">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>`).join('');
+
+  el.innerHTML = `
+    <div class="loc-header">
+      <div>
+        <h2>Per Diem Locations</h2>
+        <p style="font-size:13px;color:var(--muted);margin-top:4px">Manage daily rates for meals and incidentals by location. These appear as options when submitting a per diem expense.</p>
+      </div>
+      <button class="btn-add-loc" onclick="openAddLocation()">+ Add Location</button>
+    </div>
+    <div class="loc-table-wrap">
+      <table class="loc-table">
+        <thead>
+          <tr>
+            <th>Location</th>
+            <th>Meals Rate / Day</th>
+            <th>Incidentals Rate / Day</th>
+            <th>Combined / Day</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function openAddLocation() {
+  editingLocationId = null;
+  document.getElementById('location-modal-title').textContent = 'Add Per Diem Location';
+  document.getElementById('location-save-btn').textContent    = '💾 Save Location';
+  document.getElementById('loc-name').value             = '';
+  document.getElementById('loc-meals-rate').value       = '';
+  document.getElementById('loc-incidentals-rate').value = '';
+  openModal('location-modal');
+  setTimeout(() => document.getElementById('loc-name').focus(), 60);
+}
+
+function openEditLocation(itemId) {
+  const l = perDiemLocations.find(x => x.itemId === itemId);
+  if (!l) return;
+  editingLocationId = itemId;
+  document.getElementById('location-modal-title').textContent = 'Edit Location';
+  document.getElementById('location-save-btn').textContent    = '✓ Save Changes';
+  document.getElementById('loc-name').value             = l.name;
+  document.getElementById('loc-meals-rate').value       = l.mealsRate;
+  document.getElementById('loc-incidentals-rate').value = l.incidentalsRate;
+  openModal('location-modal');
+}
+
+async function saveLocation() {
+  const name            = document.getElementById('loc-name').value.trim();
+  const mealsRate       = parseFloat(document.getElementById('loc-meals-rate').value);
+  const incidentalsRate = parseFloat(document.getElementById('loc-incidentals-rate').value);
+  if (!name)                        { shakeInput('loc-name');             return; }
+  if (isNaN(mealsRate))             { shakeInput('loc-meals-rate');       return; }
+  if (isNaN(incidentalsRate))       { shakeInput('loc-incidentals-rate'); return; }
+
+  const btn = document.getElementById('location-save-btn');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const fields = { Title: name, MealsRate: mealsRate, IncidentalsRate: incidentalsRate };
+    if (editingLocationId) {
+      await graph(`/sites/${siteId}/lists/${encodeURIComponent(CONFIG.locationsListName)}/items/${editingLocationId}`,
+        { method: 'PATCH', body: JSON.stringify({ fields }) });
+      toast('Location updated', 'success');
+    } else {
+      await graph(`/sites/${siteId}/lists/${encodeURIComponent(CONFIG.locationsListName)}/items`,
+        { method: 'POST', body: JSON.stringify({ fields }) });
+      toast('Location added', 'success');
+    }
+    closeModal('location-modal');
+    await loadLocations();
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+async function deleteLocation(itemId) {
+  const l = perDiemLocations.find(x => x.itemId === itemId);
+  if (!l) return;
+  if (!confirm(`Delete location "${l.name}"? This cannot be undone.`)) return;
+  try {
+    await graph(`/sites/${siteId}/lists/${encodeURIComponent(CONFIG.locationsListName)}/items/${itemId}`,
+      { method: 'DELETE' });
+    toast('Location deleted', 'info');
+    await loadLocations();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// ── Dashboard (removed — kept stub so no reference errors) ─
 function renderDashboard() {
   if (expenses.length === 0) {
     document.getElementById('dashboard-content').innerHTML =
@@ -1389,10 +1598,8 @@ function openExpenseModal() {
   document.getElementById('exp-miles').value         = '';
   document.getElementById('exp-rate').value          = DEFAULT_IRS_RATE;
   document.getElementById('exp-amount').value        = '';
-  document.getElementById('exp-meals-amt').value     = '';
-  document.getElementById('exp-meals-desc').value    = '';
-  document.getElementById('exp-incidentals-amt').value  = '';
-  document.getElementById('exp-incidentals-desc').value = '';
+  document.getElementById('exp-pd-location').value  = '';
+  document.getElementById('exp-pd-days').value       = '';
   document.getElementById('exp-billable').value      = '';
   document.getElementById('exp-project').value       = '';
   document.getElementById('exp-notes').value         = '';
@@ -1402,6 +1609,9 @@ function openExpenseModal() {
   document.getElementById('project-code-group').style.display = 'none';
   document.getElementById('mileage-calc-preview').style.display  = 'none';
   document.getElementById('perdiem-total-preview').style.display = 'none';
+  document.getElementById('pd-rates-display').style.display       = 'none';
+  document.getElementById('pd-toggle-meals').classList.add('active');
+  document.getElementById('pd-toggle-incidentals').classList.add('active');
   // Reset date mode to single
   document.getElementById('date-mode-single').checked = true;
   document.getElementById('date-single-wrap').style.display = 'block';
@@ -1447,16 +1657,21 @@ function openEditExpense(itemId) {
   }
 
   // Restore per diem fields
+  populateLocationDropdown();
   if (e.expenseType === 'Per Diem' && e.perDiem) {
-    document.getElementById('exp-meals-amt').value        = e.perDiem.mealsAmt        || '';
-    document.getElementById('exp-meals-desc').value       = e.perDiem.mealsDesc       || '';
-    document.getElementById('exp-incidentals-amt').value  = e.perDiem.incidentalsAmt  || '';
-    document.getElementById('exp-incidentals-desc').value = e.perDiem.incidentalsDesc || '';
+    document.getElementById('exp-pd-location').value = e.perDiem.locationId || '';
+    document.getElementById('exp-pd-days').value     = e.perDiem.days       || '';
+    const mBtn = document.getElementById('pd-toggle-meals');
+    const iBtn = document.getElementById('pd-toggle-incidentals');
+    e.perDiem.includeMeals       ? mBtn.classList.add('active') : mBtn.classList.remove('active');
+    e.perDiem.includeIncidentals ? iBtn.classList.add('active') : iBtn.classList.remove('active');
+    onLocationChange();
   } else {
-    document.getElementById('exp-meals-amt').value        = '';
-    document.getElementById('exp-meals-desc').value       = '';
-    document.getElementById('exp-incidentals-amt').value  = '';
-    document.getElementById('exp-incidentals-desc').value = '';
+    document.getElementById('exp-pd-location').value = '';
+    document.getElementById('exp-pd-days').value     = '';
+    document.getElementById('pd-toggle-meals').classList.add('active');
+    document.getElementById('pd-toggle-incidentals').classList.add('active');
+    document.getElementById('pd-rates-display').style.display = 'none';
   }
 
   onTypeChange();
@@ -1471,20 +1686,47 @@ function onTypeChange() {
   document.getElementById('perdiem-fields').style.display  = type === 'Per Diem'      ? 'block' : 'none';
   document.getElementById('amount-fields').style.display   = type === 'Out of Pocket' ? 'block' : 'none';
   if (type === 'Mileage')  calcMileage();
-  if (type === 'Per Diem') calcPerDiem();
+  if (type === 'Per Diem') { populateLocationDropdown(); calcPerDiem(); }
+}
+
+function onLocationChange() {
+  const sel = document.getElementById('exp-pd-location');
+  const loc = perDiemLocations.find(l => l.itemId === sel.value);
+  const ratesDiv = document.getElementById('pd-rates-display');
+  if (loc) {
+    document.getElementById('pd-meals-rate-label').textContent        = fmtCurrency(loc.mealsRate);
+    document.getElementById('pd-incidentals-rate-label').textContent  = fmtCurrency(loc.incidentalsRate);
+    ratesDiv.style.display = 'flex';
+  } else {
+    ratesDiv.style.display = 'none';
+  }
+  calcPerDiem();
+}
+
+function togglePdItem(type) {
+  const btn = document.getElementById(`pd-toggle-${type}`);
+  btn.classList.toggle('active');
+  calcPerDiem();
 }
 
 function calcPerDiem() {
-  const meals       = parseFloat(document.getElementById('exp-meals-amt').value)       || 0;
-  const incidentals = parseFloat(document.getElementById('exp-incidentals-amt').value) || 0;
-  const total   = meals + incidentals;
+  const sel  = document.getElementById('exp-pd-location');
+  const loc  = perDiemLocations.find(l => l.itemId === sel.value);
+  const days = parseFloat(document.getElementById('exp-pd-days').value) || 0;
+  const includeMeals       = document.getElementById('pd-toggle-meals').classList.contains('active');
+  const includeIncidentals = document.getElementById('pd-toggle-incidentals').classList.contains('active');
   const preview = document.getElementById('perdiem-total-preview');
-  if (meals > 0 || incidentals > 0) {
-    preview.style.display = 'block';
-    preview.textContent   = `Total Per Diem: ${fmtCurrency(total)}  (Meals ${fmtCurrency(meals)} + Incidentals ${fmtCurrency(incidentals)})`;
-  } else {
-    preview.style.display = 'none';
-  }
+  if (!loc || days <= 0 || (!includeMeals && !includeIncidentals)) { preview.style.display = 'none'; return; }
+  const mealsAmt       = includeMeals       ? loc.mealsRate       * days : 0;
+  const incidentalsAmt = includeIncidentals ? loc.incidentalsRate * days : 0;
+  const total = mealsAmt + incidentalsAmt;
+  preview.style.display = 'block';
+  preview.innerHTML = `
+    <div style="margin-bottom:6px;font-size:14px">Total Per Diem: ${fmtCurrency(total)}</div>
+    <div style="font-size:12px;font-weight:400;display:flex;gap:16px;flex-wrap:wrap">
+      ${includeMeals       ? `<span>🍽 Meals: ${fmtCurrency(loc.mealsRate)}/day × ${days} days = <strong>${fmtCurrency(mealsAmt)}</strong></span>` : ''}
+      ${includeIncidentals ? `<span>📋 Incidentals: ${fmtCurrency(loc.incidentalsRate)}/day × ${days} days = <strong>${fmtCurrency(incidentalsAmt)}</strong></span>` : ''}
+    </div>`;
 }
 
 function onDateModeChange() {
@@ -1541,17 +1783,22 @@ async function saveExpense() {
 
   if (type === 'Mileage') {
     miles  = parseFloat(document.getElementById('exp-miles').value) || 0;
-    rate   = parseFloat(document.getElementById('exp-rate').value)  || DEFAULT_IRS_RATE;
+    rate   = DEFAULT_IRS_RATE;
     if (miles <= 0) { shakeInput('exp-miles'); return; }
     amount = parseFloat((miles * rate).toFixed(2));
   } else if (type === 'Per Diem') {
-    const mealsAmt        = parseFloat(document.getElementById('exp-meals-amt').value)       || 0;
-    const incidentalsAmt  = parseFloat(document.getElementById('exp-incidentals-amt').value) || 0;
-    if (mealsAmt <= 0 && incidentalsAmt <= 0) { shakeInput('exp-meals-amt'); return; }
+    const locationId = document.getElementById('exp-pd-location').value;
+    const loc = perDiemLocations.find(l => l.itemId === locationId);
+    if (!loc) { shakeInput('exp-pd-location'); return; }
+    const days = parseFloat(document.getElementById('exp-pd-days').value) || 0;
+    if (days <= 0) { shakeInput('exp-pd-days'); return; }
+    const includeMeals       = document.getElementById('pd-toggle-meals').classList.contains('active');
+    const includeIncidentals = document.getElementById('pd-toggle-incidentals').classList.contains('active');
+    if (!includeMeals && !includeIncidentals) { toast('Select at least Meals or Incidentals', 'error'); return; }
+    const mealsAmt       = includeMeals       ? parseFloat((loc.mealsRate       * days).toFixed(2)) : 0;
+    const incidentalsAmt = includeIncidentals ? parseFloat((loc.incidentalsRate * days).toFixed(2)) : 0;
     amount = parseFloat((mealsAmt + incidentalsAmt).toFixed(2));
-    const mealsDesc       = document.getElementById('exp-meals-desc').value.trim();
-    const incidentalsDesc = document.getElementById('exp-incidentals-desc').value.trim();
-    const pdData = JSON.stringify({ mealsAmt, mealsDesc, incidentalsAmt, incidentalsDesc });
+    const pdData = JSON.stringify({ locationId, locationName: loc.name, days, mealsRate: loc.mealsRate, incidentalsRate: loc.incidentalsRate, includeMeals, includeIncidentals });
     notesField = `__pd__${pdData}${userNotes ? '||' + userNotes : ''}`;
   } else {
     amount = parseFloat(document.getElementById('exp-amount').value) || 0;
@@ -1616,14 +1863,14 @@ document.querySelectorAll('.modal-overlay').forEach(el =>
 );
 
 // ── Tabs ──────────────────────────────────────────────────
-const TABS = ['portal', 'log', 'dashboard'];
+const TABS = ['portal', 'log', 'locations'];
 function showTab(tab) {
   TABS.forEach(t => {
     document.getElementById(`tab-${t}`).style.display = tab === t ? 'block' : 'none';
     document.getElementById(`nav-${t}`).classList.toggle('active', tab === t);
   });
   if (tab === 'log')       { renderLog(); }
-  if (tab === 'dashboard') { renderDashboard(); }
+  if (tab === 'locations') { renderLocations(); }
   history.replaceState(null, '', '#' + tab);
 }
 
