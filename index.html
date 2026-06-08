@@ -903,7 +903,7 @@ async function refreshData() {
     renderMyRecent();
     renderUnprocessedBanner();
     if (document.getElementById('tab-log').style.display === 'block') renderLog();
-    if (document.getElementById('tab-dashboard').style.display === 'block') renderDashboard();
+    if (document.getElementById('tab-locations').style.display === 'block') renderLocations();
 
     document.getElementById('last-updated').textContent =
       new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
