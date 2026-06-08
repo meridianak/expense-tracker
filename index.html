@@ -659,7 +659,11 @@
     </div>
     <div class="form-group" id="project-code-group" style="display:none;">
       <label>Project Name *</label>
-      <input type="text" id="exp-project" placeholder="e.g. Anchorage Site — Phase 2" autocomplete="off" />
+      <select id="exp-project-select" onchange="onProjectSelectChange('exp-project-select','exp-project-new')">
+        <option value="">— Select project —</option>
+        <option value="__other__">＋ Other (add new project…)</option>
+      </select>
+      <input type="text" id="exp-project-new" placeholder="New project name…" autocomplete="off" style="display:none;margin-top:8px;width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);outline:none;font-family:inherit" />
     </div>
     <div class="form-group">
       <label>Notes <span style="font-weight:400;color:var(--muted)">(Client Project/ER Number?)</span></label>
@@ -721,6 +725,7 @@ const CONFIG = {
   siteHostname:       "meridianak.sharepoint.com",
   expenseListName:    "ExpenseLog",
   locationsListName:  "PerDiemLocations",
+  projectNamesListName: "ProjectNames",
   pollInterval:       60000
 };
 const DEFAULT_IRS_RATE = 0.725;
@@ -730,6 +735,7 @@ let msalInstance       = null;
 let siteId             = null;
 let expenses           = [];
 let perDiemLocations   = [];
+let projectNames       = [];
 let currentUser        = null;
 let pollTimer          = null;
 let isSaving           = false;
@@ -799,6 +805,7 @@ async function startApp() {
     await ensureExpenseList();
     await ensureLocationsListExists();
     await loadLocations();
+    await loadProjectNames();
     await refreshData();
     hideScreens();
     startPolling();
@@ -846,6 +853,42 @@ async function loadLocations() {
   } catch (e) {
     console.error('Could not load locations', e);
   }
+}
+
+async function loadProjectNames() {
+  try {
+    const res = await graph(`/sites/${siteId}/lists/${encodeURIComponent(CONFIG.projectNamesListName)}/items?$expand=fields&$top=500`);
+    projectNames = (res.value || [])
+      .map(item => item.fields.Title || '')
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+    populateProjectNameDropdown();
+  } catch (e) { console.warn('Could not load project names', e); }
+}
+
+function populateProjectNameDropdown() {
+  const sel = document.getElementById('exp-project-select');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML =
+    '<option value="">— Select project —</option>' +
+    projectNames.map(n => `<option value="${escHtml(n)}"${n === cur ? ' selected' : ''}>${escHtml(n)}</option>`).join('') +
+    `<option value="__other__"${cur === '__other__' ? ' selected' : ''}>＋ Other (add new project…)</option>`;
+}
+
+async function addNewProjectName(name) {
+  try {
+    await graph(`/sites/${siteId}/lists/${encodeURIComponent(CONFIG.projectNamesListName)}/items`,
+      { method: 'POST', body: JSON.stringify({ fields: { Title: name } }) });
+    await loadProjectNames();
+  } catch (e) { console.warn('Could not save new project name', e); }
+}
+
+function onProjectSelectChange(selectId, inputId) {
+  const sel = document.getElementById(selectId);
+  const inp = document.getElementById(inputId);
+  inp.style.display = sel.value === '__other__' ? 'block' : 'none';
+  if (sel.value === '__other__') setTimeout(() => inp.focus(), 60);
 }
 
 function populateLocationDropdown() {
@@ -1594,8 +1637,11 @@ function openExpenseModal() {
   document.getElementById('exp-amount').value        = '';
   document.getElementById('exp-pd-location').value  = '';
   document.getElementById('exp-pd-days').value       = '';
-  document.getElementById('exp-billable').value      = '';
-  document.getElementById('exp-project').value       = '';
+  document.getElementById('exp-billable').value          = '';
+  populateProjectNameDropdown();
+  document.getElementById('exp-project-select').value   = '';
+  document.getElementById('exp-project-new').value      = '';
+  document.getElementById('exp-project-new').style.display = 'none';
   document.getElementById('exp-notes').value         = '';
   document.getElementById('mileage-fields').style.display     = 'none';
   document.getElementById('perdiem-fields').style.display     = 'none';
@@ -1627,8 +1673,23 @@ function openEditExpense(itemId) {
   document.getElementById('exp-rate').value     = e.rate   || DEFAULT_IRS_RATE;
   document.getElementById('exp-amount').value   = e.expenseType === 'Out of Pocket' ? e.amount : '';
   document.getElementById('exp-billable').value = e.billable;
-  document.getElementById('exp-project').value  = e.projectCode;
   document.getElementById('exp-notes').value    = e.notes;
+  // Restore project name — select from list or fall back to "Other"
+  populateProjectNameDropdown();
+  const projSel = document.getElementById('exp-project-select');
+  const projNew = document.getElementById('exp-project-new');
+  if (e.projectCode && projectNames.includes(e.projectCode)) {
+    projSel.value = e.projectCode;
+    projNew.style.display = 'none';
+  } else if (e.projectCode) {
+    projSel.value = '__other__';
+    projNew.value = e.projectCode;
+    projNew.style.display = 'block';
+  } else {
+    projSel.value = '';
+    projNew.value = '';
+    projNew.style.display = 'none';
+  }
 
   // Restore date (single vs range)
   if (e.expenseDate && e.expenseDate.includes('/')) {
@@ -1749,8 +1810,11 @@ async function saveExpense() {
   const type     = document.getElementById('exp-type').value;
   const desc     = document.getElementById('exp-desc').value.trim();
   const billable = document.getElementById('exp-billable').value;
-  const project  = document.getElementById('exp-project').value.trim();
   const userNotes = document.getElementById('exp-notes').value.trim();
+  const projectSelVal = document.getElementById('exp-project-select').value;
+  let project = projectSelVal === '__other__'
+    ? document.getElementById('exp-project-new').value.trim()
+    : projectSelVal;
 
   // Collect date (single or range)
   const isRange = document.getElementById('date-mode-range').checked;
@@ -1771,7 +1835,9 @@ async function saveExpense() {
   if (!type)     { shakeInput('exp-type');    return; }
   if (!desc)     { shakeInput('exp-desc');    return; }
   if (!billable) { shakeInput('exp-billable');return; }
-  if (billable === 'Billable' && !project) { shakeInput('exp-project'); return; }
+  if (billable === 'Billable' && !project) {
+    shakeInput(projectSelVal === '__other__' ? 'exp-project-new' : 'exp-project-select'); return;
+  }
 
   let amount = 0, miles = 0, rate = DEFAULT_IRS_RATE, notesField = userNotes;
 
@@ -1821,6 +1887,8 @@ async function saveExpense() {
         { method: 'POST', body: JSON.stringify({ fields }) });
       toast(`Submitted: ${fmtCurrency(amount)}`, 'success');
     }
+    // If a brand-new project name was typed, add it to the shared list
+    if (projectSelVal === '__other__' && project) await addNewProjectName(project);
     closeModal('expense-modal');
     await refreshData();
   } catch (e) {
