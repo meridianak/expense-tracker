@@ -609,17 +609,11 @@
       <input type="text" id="exp-desc" placeholder="e.g. Drive to Anchorage project site" autocomplete="off" />
     </div>
     <div id="mileage-fields" style="display:none;">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Miles Driven *</label>
-          <input type="number" id="exp-miles" placeholder="0" min="0" step="0.1" oninput="calcMileage()" />
-        </div>
-        <div class="form-group">
-          <label>IRS Rate ($/mile)</label>
-          <div style="padding:10px 13px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#f8fafc;color:var(--muted);font-weight:700">$${DEFAULT_IRS_RATE.toFixed(3)}/mi</div>
-          <input type="hidden" id="exp-rate" value="${DEFAULT_IRS_RATE}" />
-        </div>
+      <div class="form-group">
+        <label>Miles Driven *</label>
+        <input type="number" id="exp-miles" placeholder="0" min="0" step="0.1" oninput="calcMileage()" />
       </div>
+      <input type="hidden" id="exp-rate" value="${DEFAULT_IRS_RATE}" />
       <div id="mileage-calc-preview">Reimbursement: $0.00</div>
     </div>
     <div id="perdiem-fields" style="display:none;">
