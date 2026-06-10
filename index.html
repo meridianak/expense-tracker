@@ -79,14 +79,13 @@
     .stat-card .value { font-size: 28px; font-weight: 800; line-height: 1; }
     .stat-card .sub   { font-size: 12px; color: var(--muted); }
 
-    /* ── Portal ── */
-    .portal-hero { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; gap: 16px; }
-    .portal-hero .hero-icon { font-size: 64px; line-height: 1; }
-    .portal-hero h2 { font-size: 26px; font-weight: 800; color: var(--brand); }
-    .portal-hero p  { font-size: 15px; color: var(--muted); max-width: 460px; line-height: 1.6; }
-    .btn-log-expense { background: var(--brand); color: #fff; border: none; border-radius: 10px; padding: 16px 36px; font-size: 16px; font-weight: 700; cursor: pointer; transition: background .15s, transform .1s; box-shadow: 0 4px 16px rgba(26,58,92,.25); margin-top: 8px; }
-    .btn-log-expense:hover { background: var(--brand-light); transform: translateY(-1px); }
-    .my-recent { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 24px; max-width: 700px; margin: 0 auto; }
+    /* ── Portal / Hero ── */
+    .hero { background: linear-gradient(135deg, var(--brand) 0%, var(--brand-light) 100%); border-radius: 16px; padding: 36px 40px; color: #fff; margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .hero-left h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .hero-left p  { font-size: 14px; opacity: .75; }
+    .btn-log-expense { background: var(--brand); color: #fff; border: 2px solid rgba(255,255,255,.4); border-radius: 10px; padding: 13px 30px; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,.25); transition: all .15s; white-space: nowrap; flex-shrink: 0; }
+    .btn-log-expense:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.35); background: rgba(255,255,255,.1); }
+    .my-recent { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 24px; }
     .my-recent h3 { font-size: 14px; font-weight: 800; color: var(--brand); margin-bottom: 14px; }
     .recent-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
     .recent-row:last-child { border-bottom: none; }
@@ -98,6 +97,13 @@
     .recent-desc   { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .recent-meta   { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .recent-amount { font-size: 14px; font-weight: 800; color: var(--brand); flex-shrink: 0; }
+
+    /* ── Billable toggle buttons ── */
+    .billable-toggle { display: flex; gap: 8px; }
+    .toggle-btn { flex: 1; padding: 9px 6px; border: 2px solid var(--border); border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; background: var(--surface); color: var(--muted); text-align: center; }
+    .toggle-btn.active.yes    { border-color: var(--green);  background: var(--green-bg);  color: #16a34a; }
+    .toggle-btn.active.no     { border-color: var(--amber);  background: var(--amber-bg);  color: #92400e; }
+    .toggle-btn.active.unsure { border-color: var(--blue);   background: var(--blue-bg);   color: #1d4ed8; }
 
     /* ── Nav badge ── */
     .nav-badge {
@@ -455,11 +461,11 @@
 
   <!-- ═══ PORTAL TAB ═══ -->
   <div id="tab-portal">
-    <div class="summary-bar" id="summary-bar"></div>
-    <div class="portal-hero">
-      <div class="hero-icon">💳</div>
-      <h2>Submit an Expense</h2>
-      <p>Log mileage, per diem, or out-of-pocket expenses. All submissions are stored in SharePoint and visible to your team.</p>
+    <div class="hero">
+      <div class="hero-left">
+        <h2 id="portal-greeting">Welcome back!</h2>
+        <p>Log mileage, per diem, or out-of-pocket expenses. Submissions are stored in SharePoint and visible to your team.</p>
+      </div>
       <button class="btn-log-expense" onclick="openExpenseModal()">+ Log an Expense</button>
     </div>
     <div class="my-recent" id="my-recent-wrap" style="display:none;">
@@ -572,7 +578,10 @@
 <!-- EXPENSE MODAL -->
 <div class="modal-overlay" id="expense-modal">
   <div class="modal">
-    <h3 id="expense-modal-title">Log an Expense</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 id="expense-modal-title" style="margin:0">Log an Expense</h3>
+      <button style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;padding:0" onclick="closeModal('expense-modal')">✕</button>
+    </div>
     <div class="form-row">
       <div class="form-group">
         <label>Employee Name *</label>
@@ -651,12 +660,11 @@
     </div>
     <div class="form-group">
       <label>Billable? *</label>
-      <select id="exp-billable" onchange="onBillableChange()">
-        <option value="">— Select —</option>
-        <option value="Billable">✅ Billable</option>
-        <option value="Not Billable">❌ Not Billable</option>
-        <option value="Unsure">❓ Unsure</option>
-      </select>
+      <div class="billable-toggle">
+        <button type="button" class="toggle-btn yes" id="exp-toggle-yes" onclick="setExpBillable('Billable')">✓ Billable</button>
+        <button type="button" class="toggle-btn no" id="exp-toggle-no" onclick="setExpBillable('Not Billable')">✗ Not Billable</button>
+        <button type="button" class="toggle-btn unsure" id="exp-toggle-unsure" onclick="setExpBillable('Unsure')">? Unsure</button>
+      </div>
     </div>
     <div class="form-group" id="project-code-group" style="display:none;">
       <label>Project Name *</label>
@@ -678,7 +686,10 @@
 <!-- LOCATION MODAL -->
 <div class="modal-overlay" id="location-modal">
   <div class="modal" style="width:400px;">
-    <h3 id="location-modal-title">Add Per Diem Location</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 id="location-modal-title" style="margin:0">Add Per Diem Location</h3>
+      <button style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;padding:0" onclick="closeModal('location-modal')">✕</button>
+    </div>
     <div class="form-group">
       <label>Location Name *</label>
       <input type="text" id="loc-name" placeholder="e.g. Anchorage, Fairbanks, Remote Site A" autocomplete="off" />
@@ -703,7 +714,10 @@
 <!-- PROJECT MODAL -->
 <div class="modal-overlay" id="project-modal">
   <div class="modal" style="width:400px;">
-    <h3 id="project-modal-title">Add Project</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 id="project-modal-title" style="margin:0">Add Project</h3>
+      <button style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;padding:0" onclick="closeModal('project-modal')">✕</button>
+    </div>
     <div class="form-group">
       <label>Project Name *</label>
       <input type="text" id="proj-name" placeholder="e.g. Anchorage Site Survey 2026" autocomplete="off" />
@@ -718,7 +732,10 @@
 <!-- DELETE MODAL -->
 <div class="modal-overlay" id="delete-modal">
   <div class="modal" style="width:380px;">
-    <h3>Delete Expense?</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 style="margin:0">Delete Expense?</h3>
+      <button style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;padding:0" onclick="closeModal('delete-modal')">✕</button>
+    </div>
     <p style="font-size:14px;color:var(--text);margin-bottom:20px;line-height:1.6;" id="delete-modal-msg"></p>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('delete-modal')">Cancel</button>
@@ -758,6 +775,7 @@ let editingItemId      = null;
 let editingLocationId  = null;
 let editingProjectId   = null;
 let deleteItemId       = null;
+let expBillableValue   = '';
 let sortField          = 'date';
 let sortDir            = 'desc';
 
@@ -814,6 +832,7 @@ async function startApp() {
   currentUser = { name: account.name || account.username.split('@')[0], email: account.username };
   document.getElementById('user-name').textContent   = currentUser.name;
   document.getElementById('user-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
+  document.getElementById('portal-greeting').textContent = `Welcome back, ${currentUser.name.split(' ')[0]}!`;
   try {
     const site = await graph(`/sites/${CONFIG.siteHostname}`);
     siteId = site.id;
@@ -952,7 +971,6 @@ async function refreshData() {
     }).sort((a, b) => b.submittedAt - a.submittedAt);
 
     populateFilterDropdowns();
-    renderSummary();
     renderMyRecent();
     renderUnprocessedBanner();
     if (document.getElementById('tab-log').style.display === 'block') renderLog();
@@ -1654,7 +1672,8 @@ function openExpenseModal() {
   document.getElementById('exp-amount').value        = '';
   document.getElementById('exp-pd-location').value  = '';
   document.getElementById('exp-pd-days').value       = '';
-  document.getElementById('exp-billable').value          = '';
+  expBillableValue = '';
+  ['yes','no','unsure'].forEach(c => document.getElementById('exp-toggle-'+c).classList.remove('active'));
   populateProjectNameDropdown();
   document.getElementById('exp-project-select').value = '';
   document.getElementById('exp-notes').value          = '';
@@ -1687,7 +1706,6 @@ function openEditExpense(itemId) {
   document.getElementById('exp-miles').value    = e.miles  || '';
   document.getElementById('exp-rate').value     = e.rate   || DEFAULT_IRS_RATE;
   document.getElementById('exp-amount').value   = e.expenseType === 'Out of Pocket' ? e.amount : '';
-  document.getElementById('exp-billable').value = e.billable;
   document.getElementById('exp-notes').value    = e.notes;
   // Restore project name
   populateProjectNameDropdown();
@@ -1733,7 +1751,7 @@ function openEditExpense(itemId) {
   }
 
   onTypeChange();
-  onBillableChange();
+  setExpBillable(e.billable);
   if (e.expenseType === 'Mileage') calcMileage();
   openModal('expense-modal');
 }
@@ -1793,9 +1811,12 @@ function onDateModeChange() {
   document.getElementById('date-range-wrap').style.display  = isRange ? 'flex'  : 'none';
 }
 
-function onBillableChange() {
-  document.getElementById('project-code-group').style.display =
-    document.getElementById('exp-billable').value === 'Billable' ? 'block' : 'none';
+function setExpBillable(val) {
+  expBillableValue = val;
+  ['yes','no','unsure'].forEach(c => document.getElementById('exp-toggle-'+c).classList.remove('active'));
+  const map = { 'Billable': 'yes', 'Not Billable': 'no', 'Unsure': 'unsure' };
+  if (map[val]) document.getElementById('exp-toggle-'+map[val]).classList.add('active');
+  document.getElementById('project-code-group').style.display = val === 'Billable' ? 'block' : 'none';
 }
 
 function calcMileage() {
@@ -1812,7 +1833,7 @@ async function saveExpense() {
   const name     = document.getElementById('exp-name').value.trim();
   const type     = document.getElementById('exp-type').value;
   const desc     = document.getElementById('exp-desc').value.trim();
-  const billable = document.getElementById('exp-billable').value;
+  const billable = expBillableValue;
   const userNotes = document.getElementById('exp-notes').value.trim();
   const project = document.getElementById('exp-project-select').value;
 
@@ -1834,7 +1855,7 @@ async function saveExpense() {
   if (!name)     { shakeInput('exp-name');    return; }
   if (!type)     { shakeInput('exp-type');    return; }
   if (!desc)     { shakeInput('exp-desc');    return; }
-  if (!billable) { shakeInput('exp-billable');return; }
+  if (!billable) { shakeInput('exp-toggle-yes');return; }
   if (billable === 'Billable' && !project) {
     shakeInput('exp-project-select'); return;
   }
