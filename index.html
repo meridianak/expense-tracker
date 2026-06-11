@@ -59,10 +59,7 @@
     .user-chip:hover { background: rgba(255,255,255,.22); }
     .user-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--brand); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 
-    /* ── Refresh bar ── */
-    #refresh-bar { background: #e8f4fd; border-bottom: 1px solid #bee3f8; padding: 6px 32px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #2a6496; }
-    #refresh-bar button { background: none; border: 1px solid #2a6496; border-radius: 5px; padding: 3px 10px; font-size: 11px; font-weight: 700; color: #2a6496; cursor: pointer; }
-    #refresh-bar button:hover { background: #2a6496; color: #fff; }
+
 
     /* ── Nav ── */
     nav { background: var(--brand-light); display: flex; gap: 2px; padding: 0 32px; }
@@ -369,7 +366,6 @@
       main { padding: 16px; }
       header { padding: 0 14px; }
       nav { padding: 0 14px; }
-      #refresh-bar { padding: 6px 14px; }
       .logo p { display: none; }
 .form-row { grid-template-columns: 1fr; }
     }
@@ -442,11 +438,7 @@
   </div>
 </header>
 
-<!-- REFRESH BAR -->
-<div id="refresh-bar">
-  <span>Last updated: <strong id="last-updated">—</strong> &nbsp;·&nbsp; Auto-refreshes every 60 seconds</span>
-  <button onclick="refreshData()">↻ Refresh Now</button>
-</div>
+
 
 <!-- NAV -->
 <nav>
@@ -977,8 +969,6 @@ async function refreshData() {
     if (document.getElementById('tab-locations').style.display === 'block') renderLocations();
     if (document.getElementById('tab-projects').style.display === 'block') renderProjects();
 
-    document.getElementById('last-updated').textContent =
-      new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
   } catch (e) {
     console.error(e);
     toast('Could not refresh data — check your connection', 'error');
